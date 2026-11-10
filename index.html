@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deformation Mechanism Maps</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* layout: fixed control rail on the left, the map fills the rest; stacks on phones */
+  --bg:#f3f1ec; --panel:#ffffff; --ink:#1d1f24; --muted:#6a6e78; --line:#dcd8cf;
+  --accent:#1f5f8b; --accent-ink:#ffffff; --soft:#e8eef4; --warn:#b4542a;
+  --display:"Fraunces",Georgia,serif; --body:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#15171b; --panel:#1e2127; --ink:#e8e6e0; --muted:#9a9ea8; --line:#30343c;
+    --accent:#7fb3d9; --accent-ink:#0f1a24; --soft:#262c35; --warn:#e0926a; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#15171b; --panel:#1e2127; --ink:#e8e6e0; --muted:#9a9ea8; --line:#30343c;
+  --accent:#7fb3d9; --accent-ink:#0f1a24; --soft:#262c35; --warn:#e0926a; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:14px;line-height:1.4;display:flex;flex-direction:column}
+header{display:flex;align-items:baseline;gap:16px;padding:12px 20px;border-bottom:1px solid var(--line);background:var(--panel);flex-wrap:wrap}
+header h1{font-family:var(--display);font-weight:500;font-size:22px;margin:0;letter-spacing:.01em}
+header .sub{color:var(--muted);font-size:13px}
+header .spacer{flex:1}
+header .actions{display:flex;gap:8px;flex-wrap:wrap}
+main{flex:1;display:grid;grid-template-columns:380px 1fr;min-height:0}
+aside{border-right:1px solid var(--line);background:var(--panel);overflow-y:auto;padding:14px 16px 40px}
+section.block{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+section.block>h2{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 8px;font-weight:600;display:flex;align-items:center;gap:8px}
+section.block>h2 .r{margin-left:auto;font-weight:400;letter-spacing:0;text-transform:none}
+.row{display:flex;gap:8px;align-items:center;margin:6px 0;flex-wrap:wrap}
+.row label{color:var(--muted);font-size:12px;min-width:64px}
+.row.tight label{min-width:0}
+input[type=text],input[type=number],select{font:inherit;font-family:var(--mono);font-size:12.5px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:5px 7px;min-width:0}
+input[type=number]{width:84px}
+input[type=text]{width:100%}
+select{padding-right:4px}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+button{font:inherit;font-size:13px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:6px;padding:6px 11px;cursor:pointer}
+button:hover{background:var(--soft)}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+button.small{font-size:12px;padding:3px 8px}
+button.icon{padding:3px 7px;line-height:1}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px 8px}
+.field{display:flex;flex-direction:column;gap:3px}
+.field>span{font-size:11px;color:var(--muted);font-family:var(--mono)}
+.field input,.field select{width:100%}
+.mech{border:1px solid var(--line);border-left-width:6px;border-radius:8px;padding:8px 10px;margin:8px 0;background:var(--bg)}
+.mech.off{opacity:.55}
+.mech .head{display:flex;align-items:center;gap:8px}
+.mech .head .name{font-weight:600;flex:1;font-size:13.5px}
+.mech .head input.name{font-family:var(--body);font-weight:600;font-size:13.5px;background:transparent;border:1px solid transparent;padding:2px 4px}
+.mech .head input.name:hover,.mech .head input.name:focus{border-color:var(--line);background:var(--panel)}
+.mech .meta{display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap}
+.mech .params{margin-top:8px;display:none}
+.mech.open .params{display:block}
+.mech .eq{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:6px;white-space:normal}
+.mech .src{font-size:11px;color:var(--muted);margin-top:4px}
+.toggle{appearance:none;width:34px;height:20px;border-radius:10px;background:var(--line);position:relative;cursor:pointer;flex:none}
+.toggle:checked{background:var(--accent)}
+.toggle::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .15s}
+.toggle:checked::after{left:16px}
+@media (prefers-reduced-motion: reduce){.toggle::after{transition:none}}
+.swatch{width:14px;height:14px;border-radius:3px;border:1px solid rgba(0,0,0,.2);flex:none}
+input[type=color]{width:26px;height:22px;border:1px solid var(--line);border-radius:4px;padding:0;background:none;cursor:pointer}
+.plot{position:relative;display:flex;flex-direction:column;min-width:0;padding:14px 18px 10px}
+.plot canvas{width:100%;height:auto;display:block;border:1px solid var(--line);border-radius:8px;background:#fff}
+.readout{font-family:var(--mono);font-size:12.5px;color:var(--muted);padding:8px 2px;display:flex;gap:18px;flex-wrap:wrap;min-height:34px}
+.readout b{color:var(--ink);font-weight:500}
+.legend{display:flex;gap:14px;flex-wrap:wrap;padding:4px 2px 0;font-size:12.5px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.hint{font-size:11.5px;color:var(--muted);margin:4px 0 0}
+.pill{font-family:var(--mono);font-size:11px;background:var(--soft);border-radius:10px;padding:1px 7px;color:var(--ink)}
+dialog{border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink);max-width:min(900px,94vw);padding:16px 18px}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+dialog h3{margin:0 0 10px;font-family:var(--display);font-weight:500}
+dialog textarea{width:100%;height:260px;font-family:var(--mono);font-size:12px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:8px}
+dialog img{max-width:100%;border:1px solid var(--line);border-radius:6px}
+.status{font-size:12px;color:var(--warn);min-height:16px;margin-top:6px}
+@media (max-width:860px){
+  main{grid-template-columns:1fr;overflow:auto}
+  aside{border-right:0;border-bottom:1px solid var(--line);max-height:none;overflow:visible}
+  header{padding:10px 16px}
+  .plot{padding:12px 16px}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Deformation Mechanism Maps</h1>
+  <span class="sub">Olivine by default; any flow law you can write as a power law, a Peierls law, or the Breithaupt dislocation model</span>
+  <span class="spacer"></span>
+  <div class="actions">
+    <button id="btnPng" title="Render the current map at 3× resolution">Export PNG</button>
+    <button id="btnJson" title="Copy or paste a complete settings file">Settings JSON</button>
+    <button id="btnAbout">About</button>
+  </div>
+</header>
+<main>
+<aside>
+  <section class="block">
+    <h2>Scenario</h2>
+    <select id="scenario" style="width:100%"></select>
+    <p class="hint" id="scenarioNote"></p>
+  </section>
+
+  <section class="block">
+    <h2>Axes</h2>
+    <div class="grid2">
+      <div class="field"><span>x axis</span><select id="xvar"></select></div>
+      <div class="field"><span>y axis</span><select id="yvar"></select></div>
+      <div class="field"><span id="xminL">x min</span><input type="number" id="xmin" step="any"></div>
+      <div class="field"><span id="xmaxL">x max</span><input type="number" id="xmax" step="any"></div>
+      <div class="field"><span id="yminL">y min</span><input type="number" id="ymin" step="any"></div>
+      <div class="field"><span id="ymaxL">y max</span><input type="number" id="ymax" step="any"></div>
+    </div>
+    <div class="hint">Stress and grain size are logarithmic; enter the exponent (10<sup>x</sup>). Temperature axes are linear.</div>
+  </section>
+
+  <section class="block">
+    <h2>Conditions</h2>
+    <div class="grid3">
+      <div class="field" id="fixTbox"><span>T (K)</span><input type="number" id="fixT" step="1"></div>
+      <div class="field" id="fixDbox"><span>d (µm)</span><input type="number" id="fixD" step="any"></div>
+      <div class="field" id="fixSbox"><span>σ (MPa)</span><input type="number" id="fixS" step="any"></div>
+      <div class="field"><span>P (GPa)</span><input type="number" id="P" step="0.1"></div>
+      <div class="field"><span>C<sub>OH</sub> (ppm H/Si)</span><input type="number" id="COH" step="any"></div>
+      <div class="field"><span>melt φ</span><input type="number" id="phi" step="0.01"></div>
+    </div>
+    <div class="hint">Pressure enters through E + PV for every mechanism. C<sub>OH</sub> and φ enter only laws with r or α set.</div>
+  </section>
+
+  <section class="block">
+    <h2>Contours</h2>
+    <div class="grid3">
+      <div class="field"><span>quantity</span><select id="cq"><option value="rate">strain rate</option><option value="visc">viscosity</option></select></div>
+      <div class="field"><span>log₁₀ step</span><input type="number" id="cstep" step="1" min="1"></div>
+      <div class="field"><span>labels</span><select id="clab"><option value="1">on</option><option value="0">off</option></select></div>
+      <div class="field"><span>log₁₀ min</span><input type="number" id="cmin" step="1"></div>
+      <div class="field"><span>log₁₀ max</span><input type="number" id="cmax" step="1"></div>
+    </div>
+    <div class="row tight" style="margin-top:8px">
+      <label><input type="checkbox" id="showBounds" checked> field boundaries</label>
+      <label><input type="checkbox" id="showNames" checked> field names</label>
+      <label><input type="checkbox" id="showSub" checked> Breithaupt sub-fields</label>
+    </div>
+    <div class="row tight">
+      <label>grid <select id="res"><option value="120">fast</option><option value="200" selected>normal</option><option value="320">fine</option></select></label>
+    </div>
+  </section>
+
+  <section class="block">
+    <h2>Mechanisms <span class="r"><button class="small" id="addMech">+ add</button></span></h2>
+    <div id="mechs"></div>
+    <div class="hint">Mechanisms in the same series group act in series (the slower one limits); groups and ungrouped mechanisms add in parallel. The field shows the mechanism contributing the largest strain rate.</div>
+  </section>
+</aside>
+
+<div class="plot">
+  <canvas id="map" width="900" height="760"></canvas>
+  <div class="readout" id="readout">Move the pointer over the map to read strain rate, viscosity, and the dominant mechanism.</div>
+  <div class="legend" id="legend"></div>
+</div>
+</main>
+
+<dialog id="dlgJson">
+  <h3>Settings</h3>
+  <p class="hint">Copy this to save a map, or paste a saved file and click Load.</p>
+  <textarea id="jsonText" spellcheck="false"></textarea>
+  <div class="row" style="margin-top:10px">
+    <button class="primary" id="jsonCopy">Copy</button>
+    <button id="jsonLoad">Load</button>
+    <button id="jsonClose">Close</button>
+    <span class="status" id="jsonStatus"></span>
+  </div>
+</dialog>
+
+<dialog id="dlgPng">
+  <h3>Map image</h3>
+  <img id="pngImg" alt="Rendered deformation mechanism map">
+  <div class="row" style="margin-top:10px">
+    <a id="pngLink" download="deformation_mechanism_map.png"><button class="primary">Download</button></a>
+    <button id="pngClose">Close</button>
+    <span class="hint">If the download is blocked where this page is embedded, right-click the image and save it.</span>
+  </div>
+</dialog>
+
+<dialog id="dlgAbout">
+  <h3>About these maps</h3>
+  <div style="max-width:62ch;font-size:13.5px">
+  <p>Each mechanism gives a strain rate at every point of the map. Mechanisms add in parallel unless they share a series group, in which case the slower one limits the group. The coloured field is the mechanism contributing the most strain rate; thin lines are contours of the total strain rate (or viscosity, σ/3ε̇).</p>
+  <p><b>Power law</b>: ε̇ = A σ<sup>n</sup> d<sup>−p</sup> C<sub>OH</sub><sup>r</sup> e<sup>αφ</sup> exp[−(E + PV)/RT], with an optional near-solidus enhancement exp[−ΔQ/R (1/T − 1/T<sub>c</sub>)] above T<sub>c</sub> = f T<sub>s</sub> (Hiraga).</p>
+  <p><b>Peierls law</b>: ε̇ = A σ<sup>n</sup> exp{−(E + PV)/RT [1 − (σ/σ<sub>P</sub>)<sup>p</sup>]<sup>q</sup>}.</p>
+  <p><b>Breithaupt model</b> (Breithaupt, Katz, Hansen &amp; Kumamoto, PNAS 2023): steady state of the Taylor-stress evolution equation with dynamic recovery and static recovery by pipe, grain-boundary and lattice diffusion, ε̇ = A′σ<sub>ρ</sub>² sinh[(σ − σ<sub>ρ</sub> − σ<sub>d</sub>)/σ<sub>ref</sub>]. Its field is split by what limits the rate: low-temperature plasticity (dynamic recovery), grain-size-insensitive creep (pipe-diffusion recovery), or grain-size-sensitive creep (grain-boundary recovery).</p>
+  <p>Units: stress MPa, grain size µm, temperature K, pressure GPa, activation energy kJ/mol, activation volume cm³/mol, strain rate s⁻¹. Pre-exponents are in those units.</p>
+  <p class="hint">Rock and Mineral Physics Laboratory, University of Minnesota. Flow laws are taken from the cited papers; check parameters against the source before use in publications.</p>
+  </div>
+  <div class="row" style="margin-top:10px"><button id="aboutClose">Close</button></div>
+</dialog>
+
+<script>
+'use strict';
+const R = 8.314462618, LN10 = Math.LN10;
+
+/* ----------------------------------------------------------- flow laws */
+function logsinh(z){ if(z>20) return z-Math.LN2+Math.log1p(-Math.exp(-2*z)); if(z<1e-8) return Math.log(z)+z*z/6; return Math.log(Math.sinh(z)); }
+function lse3(a,b,c){ const m=Math.max(a,b,c); if(m===-Infinity) return -Infinity; return m+Math.log(Math.exp(a-m)+Math.exp(b-m)+Math.exp(c-m)); }
+
+// power law: returns log10 rate
+function powerLaw(p, s, T, d, P, COH, phi){
+  let lg = Math.log10(p.A) + p.n*Math.log10(s) - p.p*Math.log10(d) - (p.E*1e3 + P*1e9*p.V*1e-6)/(R*T)/LN10;
+  if(p.r) lg += p.r*Math.log10(Math.max(COH,1e-30));
+  if(p.alpha) lg += p.alpha*phi/LN10;
+  if(p.Xon){ const Tc = p.f*p.Ts; if(T>Tc) lg += -(p.dQ*1e3)/R*(1/T-1/Tc)/LN10; }
+  return lg;
+}
+// Peierls law
+function peierlsLaw(p, s, T, d, P){
+  const x = Math.min(s/p.sP, 1);
+  const E = p.E*1e3 + P*1e9*p.V*1e-6;
+  return Math.log10(p.A) + p.n*Math.log10(s) - E/(R*T)*Math.pow(1-Math.pow(x,p.pp), p.q)/LN10;
+}
+// Breithaupt et al. 2023 steady state. d in um (Infinity for single crystal). Returns {lg, regime} regime 1 LTP 2 GSI 3 GSS, 0 below threshold
+function breithaupt(p, s, T, dum, P){
+  const d = dum*1e-6;
+  const sd = p.beta*p.mu*1e3*p.b/d;            // MPa (mu in GPa)
+  if(!(s>sd)) return {lg:-Infinity, regime:0};
+  const RT = R*T, PV = P*1e9*p.dV*1e-6;
+  const sR = p.sigP*RT/(p.Q*1e3);
+  const lnA = p.log10A*LN10 - (p.Q*1e3+PV)/RT;
+  const lnRp = p.log10Rpipe*LN10 - (p.Q*1e3+PV)/RT;
+  const lnRg = (p.log10Rgb===null||p.log10Rgb===undefined||!isFinite(p.log10Rgb)? -Infinity : p.log10Rgb*LN10 - (p.Q*1e3+PV)/RT);
+  const lnRl = (isFinite(p.log10Rlat)? p.log10Rlat*LN10 - (p.Q*1e3+PV)/RT : -Infinity);
+  const lnsd = Math.log(sd);
+  const smax = p.sigRhoMax, invMax = p.dyn ? 1/smax : 0;
+  const sSat = p.dyn ? 0.5*(smax+Math.sqrt(smax*smax+4*smax*sd)) : Infinity;
+  const satBinds = sSat < s-sd;
+  const sHi = satBinds ? sSat : s-sd;
+  const effHi = satBinds ? s-sd-sHi : 0;
+  const Ghi = satBinds ? 0 : Math.max(1+sd/sHi - sHi*invMax, 0);
+  const lnRec = x => lse3(lnRl+3*Math.log(x), lnRp+5*Math.log(x), lnRg+3*Math.log(x)+lnsd);
+  const Gof = (u,x) => Ghi + u*(sd/(sHi*x)+invMax);
+  const resid = v => { const u=Math.exp(v), x=sHi-u; if(x<=0) return Infinity; return lnA+2*Math.log(x)+Math.log(Gof(u,x))+logsinh((effHi+u)/sR)-lnRec(x); };
+  let a = Math.log(sHi)-700, b = Math.log(sHi)+Math.log1p(-1e-12);
+  let ga = resid(a), gb = resid(b), u;
+  if(ga>=0) u = 0; else if(gb<=0) u = sHi; else {
+    let side=0, c=0.5*(a+b);
+    for(let it=0; it<200; it++){
+      c = b - gb*(b-a)/(gb-ga);
+      if(!isFinite(c)||c<=a||c>=b) c=0.5*(a+b);
+      const gc = resid(c);
+      if(gc>0){ if(side===1) ga*=0.5; b=c; gb=gc; side=1; } else { if(side===-1) gb*=0.5; a=c; ga=gc; side=-1; }
+      if(Math.abs(gc)<1e-12 || (b-a)<1e-13) break;
+    }
+    u = Math.exp(c);
+  }
+  const x = sHi-u, G = Gof(u,x), eff = effHi+u, lr = lnRec(x);
+  let lnE = lnA+2*Math.log(x)+logsinh(eff/sR);
+  if(Ghi>0 && G>0 && isFinite(lr)) lnE = lr-Math.log(G);
+  const fracDyn = (x*invMax)/(1+sd/x);
+  const tp = lnRp+5*Math.log(x), tg = lnRg+3*Math.log(x)+lnsd;
+  let regime = 2; if(fracDyn>0.5) regime = 1; else if(tg>tp) regime = 3;
+  return {lg: lnE/LN10, regime, sigRho:x};
+}
+
+/* ----------------------------------------------------------- library */
+const PRESETS = {
+  power: [
+    {id:'hk03_dif_dry', name:'Diffusion creep, dry', src:'Hirth & Kohlstedt 2003', A:1.5e9, n:1, p:3, E:375, V:6, r:0, alpha:30, Xon:false, Ts:1433, dQ:230, f:0.92},
+    {id:'hzk11_dif_dry', name:'Diffusion creep, dry (HZK11)', src:'Hansen, Zimmerman & Kohlstedt 2011', A:Math.pow(10,7.6), n:1, p:3, E:375, V:6, r:0, alpha:30, Xon:false, Ts:1433, dQ:230, f:0.92},
+    {id:'hk03_dif_wet', name:'Diffusion creep, wet', src:'Hirth & Kohlstedt 2003 (C_OH in ppm H/Si)', A:1e6, n:1, p:3, E:335, V:4, r:1, alpha:30, Xon:false, Ts:1433, dQ:230, f:0.92},
+    {id:'hk03_dis_dry', name:'Dislocation creep, dry', src:'Hirth & Kohlstedt 2003', A:1.1e5, n:3.5, p:0, E:530, V:18, r:0, alpha:45, Xon:false, Ts:1433, dQ:230, f:0.92},
+    {id:'hk03_dis_wet', name:'Dislocation creep, wet', src:'Hirth & Kohlstedt 2003 (C_OH in ppm H/Si)', A:90, n:3.5, p:0, E:480, V:11, r:1.2, alpha:45, Xon:false, Ts:1433, dQ:230, f:0.92},
+    {id:'hzk11_gbs', name:'GSS dislocation creep (disGBS)', src:'Hansen, Zimmerman & Kohlstedt 2011', A:Math.pow(10,4.8), n:2.9, p:0.73, E:445, V:18, r:0, alpha:30, Xon:false, Ts:1433, dQ:230, f:0.92},
+    {id:'hk03_gbs', name:'disGBS (HK03 form)', src:'Hirth & Kohlstedt 2003', A:6500, n:3.5, p:2, E:400, V:18, r:0, alpha:30, Xon:false, Ts:1433, dQ:230, f:0.92},
+    {id:'hiraga_dif', name:'Diffusion creep (Hiraga)', src:'Hiraga, 2026 (Treatise update); near-solidus enhancement above 0.92 T_s', A:1.12e10, n:1, p:3, E:470, V:6, r:0, alpha:0, Xon:true, Ts:1433, dQ:230, f:0.92},
+    {id:'hiraga_int', name:'Interface-controlled creep (Hiraga)', src:'Hiraga, 2026 (Treatise update); n = 3, p = 1, enhancement above 0.84 T_s', A:2.12e12, n:3, p:1, E:610, V:6, r:0, alpha:0, Xon:true, Ts:1433, dQ:230, f:0.84},
+    {id:'custom_power', name:'Custom power law', src:'', A:1, n:3, p:0, E:400, V:10, r:0, alpha:0, Xon:false, Ts:1433, dQ:230, f:0.9},
+  ],
+  peierls: [
+    {id:'mei10', name:'Low-T plasticity (Mei et al.)', src:'Mei et al. 2010, D-DIA', A:1.4e-7, n:2, sP:5900, E:320, V:0, pp:0.5, q:1},
+    {id:'goetze78', name:'Low-T plasticity (Goetze)', src:'Goetze 1978; Evans & Goetze 1979', A:Math.pow(10,3), n:0, sP:9100, E:500, V:0, pp:2, q:1},
+    {id:'kh15', name:'Low-T plasticity (Kumamoto et al.)', src:'Kumamoto et al. 2017, nanoindentation', A:Math.pow(10,7.1), n:2, sP:2060, E:518, V:0, pp:0.75, q:1},
+    {id:'custom_peierls', name:'Custom Peierls law', src:'', A:1e-7, n:2, sP:5000, E:350, V:0, pp:0.5, q:1},
+  ],
+  breithaupt: [
+    {id:'b23_full', name:'Breithaupt dislocation model', src:'Breithaupt, Katz, Hansen & Kumamoto 2023, Table S1 (full model)', mu:65, b:5e-10, beta:2, alpha:2.46, sigP:3100, sigRhoMax:1800, dV:15, log10A:6.94, log10Rpipe:-0.95, log10Rgb:3.53, log10Rlat:-Infinity, Q:450, dyn:true},
+    {id:'b23_pipe', name:'Breithaupt, pipe recovery only', src:'Breithaupt et al. 2023, Table S1 (Fig. 1A fit)', mu:65, b:5e-10, beta:2, alpha:2.46, sigP:3100, sigRhoMax:1800, dV:15, log10A:6.44, log10Rpipe:0.01, log10Rgb:-Infinity, log10Rlat:-Infinity, Q:453, dyn:true},
+  ]
+};
+const SUBNAMES = ['', 'Low-T plasticity', 'Dislocation creep', 'GSS dislocation creep'];
+const SUBCOLORS = ['', '#cdce92', '#f06d4d', '#05a350'];
+
+function mech(type, presetId, extra){
+  const p = JSON.parse(JSON.stringify(PRESETS[type].find(q=>q.id===presetId)));
+  return Object.assign({type, preset:presetId, on:true, group:'', color:'#888888', open:false}, p, extra||{});
+}
+
+const SCENARIOS = {
+  treatise: {
+    name:'Treatise 2026 (Breithaupt + Hiraga)',
+    note:'The configuration of the updated Treatise chapter: Hiraga diffusion and interface laws in series, Breithaupt dislocation model split into its three fields.',
+    mechs: ()=>[
+      mech('power','hiraga_dif',{color:'#a6313d', group:'A'}),
+      mech('power','hiraga_int',{color:'#4a7db5', group:'A'}),
+      mech('breithaupt','b23_full',{color:'#f06d4d'}),
+    ],
+    axes:{x:'T', y:'s', xmin:873, xmax:1873, ymin:-1, ymax:4, T:1473, d:1000, s:100, P:0, COH:0, phi:0}
+  },
+  kh2015: {
+    name:'Kohlstedt & Hansen 2015 (empirical, dry)',
+    note:'The 2015 Treatise maps: HK03 diffusion and dislocation creep, Hansen et al. 2011 disGBS, Mei et al. 2010 low-T plasticity.',
+    mechs: ()=>[
+      mech('power','hzk11_dif_dry',{color:'#a6313d'}),
+      mech('power','hzk11_gbs',{color:'#05a350'}),
+      mech('power','hk03_dis_dry',{color:'#f06d4d'}),
+      mech('peierls','mei10',{color:'#cdce92'}),
+    ],
+    axes:{x:'T', y:'s', xmin:873, xmax:1873, ymin:-1, ymax:4, T:1473, d:1000, s:100, P:0.3, COH:0, phi:0}
+  },
+  hk03dry: {
+    name:'Hirth & Kohlstedt 2003, dry',
+    note:'Diffusion creep, disGBS and dislocation creep from HK03 with GBS in series with dislocation creep, as in their Table 1.',
+    mechs: ()=>[
+      mech('power','hk03_dif_dry',{color:'#a6313d'}),
+      mech('power','hk03_gbs',{color:'#05a350', group:'A'}),
+      mech('power','hk03_dis_dry',{color:'#f06d4d', group:'A'}),
+      mech('peierls','mei10',{color:'#cdce92'}),
+    ],
+    axes:{x:'T', y:'s', xmin:873, xmax:1873, ymin:-1, ymax:4, T:1473, d:1000, s:100, P:0.3, COH:0, phi:0}
+  },
+  hk03wet: {
+    name:'Hirth & Kohlstedt 2003, wet (1000 ppm H/Si)',
+    note:'Wet diffusion and dislocation creep from HK03 with C_OH = 1000 ppm H/Si.',
+    mechs: ()=>[
+      mech('power','hk03_dif_wet',{color:'#a6313d'}),
+      mech('power','hk03_dis_wet',{color:'#f06d4d'}),
+      mech('peierls','mei10',{color:'#cdce92'}),
+    ],
+    axes:{x:'T', y:'s', xmin:873, xmax:1873, ymin:-1, ymax:4, T:1473, d:1000, s:100, P:0.3, COH:1000, phi:0}
+  },
+};
+
+/* ----------------------------------------------------------- state */
+const VARS = {
+  T:{label:'Temperature (K)', log:false, key:'T'},
+  invT:{label:'10⁴/T (K⁻¹)', log:false, key:'T'},
+  d:{label:'Grain size (µm)', log:true, key:'d'},
+  s:{label:'Differential stress (MPa)', log:true, key:'s'},
+};
+const DEFAULT_RANGES = {T:[873,1873], invT:[5,12], d:[0,5], s:[-1,4]};
+let S = {scenario:'treatise', axes:null, mechs:[], cq:'rate', cstep:2, cmin:-22, cmax:2, clab:true, showBounds:true, showNames:true, showSub:true, res:200};
+function loadScenario(id){
+  const sc = SCENARIOS[id]; S.scenario = id;
+  S.axes = Object.assign({}, sc.axes); S.mechs = sc.mechs();
+  document.getElementById('scenarioNote').textContent = sc.note;
+}
+
+/* ----------------------------------------------------------- UI */
+const $ = id => document.getElementById(id);
+const scenarioSel = $('scenario');
+for(const [k,v] of Object.entries(SCENARIOS)){ const o=document.createElement('option'); o.value=k; o.textContent=v.name; scenarioSel.appendChild(o); }
+for(const sel of ['xvar','yvar']) for(const [k,v] of Object.entries(VARS)){ const o=document.createElement('option'); o.value=k; o.textContent=v.label; $(sel).appendChild(o); }
+
+function syncAxesUI(){
+  const a = S.axes;
+  $('xvar').value=a.x; $('yvar').value=a.y;
+  $('xmin').value=a.xmin; $('xmax').value=a.xmax; $('ymin').value=a.ymin; $('ymax').value=a.ymax;
+  const lx = VARS[a.x].log?' (log₁₀)':'' , ly = VARS[a.y].log?' (log₁₀)':'';
+  $('xminL').textContent='x min'+lx; $('xmaxL').textContent='x max'+lx; $('yminL').textContent='y min'+ly; $('ymaxL').textContent='y max'+ly;
+  $('fixT').value=a.T; $('fixD').value=a.d; $('fixS').value=a.s; $('P').value=a.P; $('COH').value=a.COH; $('phi').value=a.phi;
+  const used = new Set([VARS[a.x].key, VARS[a.y].key]);
+  $('fixTbox').style.opacity = used.has('T')?0.4:1; $('fixDbox').style.opacity = used.has('d')?0.4:1; $('fixSbox').style.opacity = used.has('s')?0.4:1;
+  $('fixT').disabled = used.has('T'); $('fixD').disabled = used.has('d'); $('fixS').disabled = used.has('s');
+  $('cq').value=S.cq; $('cstep').value=S.cstep; $('cmin').value=S.cmin; $('cmax').value=S.cmax; $('clab').value=S.clab?'1':'0';
+  $('showBounds').checked=S.showBounds; $('showNames').checked=S.showNames; $('showSub').checked=S.showSub; $('res').value=S.res;
+  scenarioSel.value=S.scenario;
+}
+function readAxesUI(){
+  const a = S.axes;
+  const nx=$('xvar').value, ny=$('yvar').value;
+  if(nx!==a.x){ a.x=nx; [a.xmin,a.xmax]=DEFAULT_RANGES[nx]; }
+  if(ny!==a.y){ a.y=ny; [a.ymin,a.ymax]=DEFAULT_RANGES[ny]; }
+  if(VARS[a.x].key===VARS[a.y].key){ a.y = (VARS[a.x].key==='s')?'d':'s'; [a.ymin,a.ymax]=DEFAULT_RANGES[a.y]; }
+  for(const k of ['xmin','xmax','ymin','ymax']) a[k]=+$(k).value;
+  a.T=+$('fixT').value; a.d=+$('fixD').value; a.s=+$('fixS').value; a.P=+$('P').value; a.COH=+$('COH').value; a.phi=+$('phi').value;
+  S.cq=$('cq').value; S.cstep=Math.max(1,+$('cstep').value||1); S.cmin=+$('cmin').value; S.cmax=+$('cmax').value; S.clab=$('clab').value==='1';
+  S.showBounds=$('showBounds').checked; S.showNames=$('showNames').checked; S.showSub=$('showSub').checked; S.res=+$('res').value;
+}
+
+const FIELDS = {
+  power:[['A','A'],['n','n'],['p','p'],['E','E (kJ/mol)'],['V','V (cm³/mol)'],['r','r (C_OH)'],['alpha','α (melt)'],['Ts','T_s (K)'],['dQ','ΔQ (kJ/mol)'],['f','f = T_c/T_s']],
+  peierls:[['A','A'],['n','n'],['sP','σ_P (MPa)'],['E','E (kJ/mol)'],['V','V (cm³/mol)'],['pp','p'],['q','q']],
+  breithaupt:[['log10A','log₁₀A′*'],['log10Rpipe','log₁₀R′pipe*'],['log10Rgb','log₁₀R′gb*'],['log10Rlat','log₁₀R′lat*'],['Q','Q (kJ/mol)'],['dV','ΔV (cm³/mol)'],['sigP','σ_P* (MPa)'],['sigRhoMax','σ_ρ,max (MPa)'],['mu','μ (GPa)'],['b','b (m)'],['beta','β']],
+};
+const EQS = {
+  power:'ε̇ = A σⁿ d⁻ᵖ C_OHʳ e^{αφ} exp[−(E+PV)/RT]',
+  peierls:'ε̇ = A σⁿ exp{−(E+PV)/RT [1−(σ/σ_P)ᵖ]^q}',
+  breithaupt:'ε̇ = A′σ_ρ² sinh[(σ−σ_ρ−σ_d)/σ_ref], steady state of dσ_ρ/dt = M[...]',
+};
+
+function fmtNum(v){ if(v===-Infinity||v===null) return '-Inf'; if(v===0) return '0'; const a=Math.abs(v); if(a>=1e4||a<1e-3) return v.toExponential(3).replace(/\.?0+e/,'e'); return String(+v.toPrecision(5)); }
+function parseNum(s){ s=String(s).trim().replace(/\s+/g,''); if(/^-?inf$/i.test(s)) return s[0]==='-'?-Infinity:Infinity; const m=s.match(/^10\^(-?[\d.]+)$/); if(m) return Math.pow(10,+m[1]); const v=Number(s); return isNaN(v)?NaN:v; }
+
+function renderMechs(){
+  const host=$('mechs'); host.innerHTML='';
+  S.mechs.forEach((m,i)=>{
+    const div=document.createElement('div'); div.className='mech'+(m.on?'':' off')+(m.open?' open':''); div.style.borderLeftColor=m.color;
+    const presets = PRESETS[m.type].map(p=>`<option value="${p.id}" ${p.id===m.preset?'selected':''}>${p.name}</option>`).join('');
+    const params = FIELDS[m.type].map(([k,l])=>{
+      if(m.type==='power' && ['Ts','dQ','f'].includes(k) && !m.Xon) return '';
+      return `<div class="field"><span>${l}</span><input type="text" data-k="${k}" value="${fmtNum(m[k])}"></div>`;
+    }).join('');
+    const xon = m.type==='power' ? `<label style="font-size:12px"><input type="checkbox" data-k="Xon" ${m.Xon?'checked':''}> near-solidus enhancement</label>` : '';
+    const dyn = m.type==='breithaupt' ? `<label style="font-size:12px"><input type="checkbox" data-k="dyn" ${m.dyn?'checked':''}> dynamic recovery (LTP branch)</label>` : '';
+    div.innerHTML = `
+      <div class="head">
+        <input type="checkbox" class="toggle" data-k="on" ${m.on?'checked':''} title="enable">
+        <input type="color" data-k="color" value="${m.color}" title="field colour">
+        <input class="name" data-k="name" value="${m.name.replace(/"/g,'&quot;')}">
+        <button class="icon small" data-act="toggle" title="parameters">${m.open?'▾':'▸'}</button>
+        <button class="icon small" data-act="del" title="remove">✕</button>
+      </div>
+      <div class="meta">
+        <select data-k="type"><option value="power" ${m.type==='power'?'selected':''}>power law</option><option value="peierls" ${m.type==='peierls'?'selected':''}>Peierls law</option><option value="breithaupt" ${m.type==='breithaupt'?'selected':''}>Breithaupt model</option></select>
+        <select data-k="preset">${presets}</select>
+        <span class="pill" title="series group">series <input type="text" data-k="group" value="${m.group}" maxlength="1" style="width:2.2em;padding:1px 4px;font-size:11px"></span>
+      </div>
+      <div class="params">
+        <div class="eq">${EQS[m.type]}</div>
+        <div class="grid3" style="margin-top:6px">${params}</div>
+        <div class="row tight" style="margin-top:6px">${xon}${dyn}</div>
+        <div class="src">${m.src||''}</div>
+      </div>`;
+    div.addEventListener('change', e=>{
+      const t=e.target, k=t.dataset.k;
+      if(k==='on'){ m.on=t.checked; }
+      else if(k==='color'){ m.color=t.value; }
+      else if(k==='name'){ m.name=t.value; }
+      else if(k==='group'){ m.group=t.value.trim().toUpperCase(); }
+      else if(k==='type'){ const nm=mech(t.value, PRESETS[t.value][0].id, {color:m.color, group:m.group, open:true}); S.mechs[i]=nm; }
+      else if(k==='preset'){ const nm=mech(m.type, t.value, {color:m.color, group:m.group, open:m.open, on:m.on}); S.mechs[i]=nm; }
+      else if(k==='Xon'||k==='dyn'){ m[k]=t.checked; }
+      else if(k){ const v=parseNum(t.value); if(!isNaN(v)) m[k]=v; }
+      renderMechs(); schedule();
+    });
+    div.addEventListener('click', e=>{
+      const b=e.target.closest('button'); if(!b) return;
+      if(b.dataset.act==='toggle'){ m.open=!m.open; renderMechs(); }
+      if(b.dataset.act==='del'){ S.mechs.splice(i,1); renderMechs(); schedule(); }
+    });
+    host.appendChild(div);
+  });
+}
+$('addMech').addEventListener('click', ()=>{ S.mechs.push(mech('power','custom_power',{color:'#7a5fb5', open:true})); renderMechs(); schedule(); });
+scenarioSel.addEventListener('change', ()=>{ loadScenario(scenarioSel.value); syncAxesUI(); renderMechs(); schedule(); });
+for(const id of ['xvar','yvar','xmin','xmax','ymin','ymax','fixT','fixD','fixS','P','COH','phi','cq','cstep','cmin','cmax','clab','showBounds','showNames','showSub','res'])
+  $(id).addEventListener('change', ()=>{ readAxesUI(); syncAxesUI(); schedule(); });
+
+/* ----------------------------------------------------------- model evaluation */
+function evalPoint(s, T, d, a){
+  // returns {total: log10 rate, contrib: [log10 per mechanism], dom: index, sub: regime}
+  const n=S.mechs.length, lg=new Array(n).fill(-Infinity), sub=new Array(n).fill(0);
+  for(let i=0;i<n;i++){
+    const m=S.mechs[i]; if(!m.on) continue;
+    if(m.type==='power') lg[i]=powerLaw(m,s,T,d,a.P,a.COH,a.phi);
+    else if(m.type==='peierls') lg[i]=peierlsLaw(m,s,T,d,a.P);
+    else { const r=breithaupt(m,s,T,d,a.P); lg[i]=r.lg; sub[i]=r.regime; }
+  }
+  // combine: series groups -> harmonic; contributions attributed to limiting member
+  const contrib=lg.slice(); const groups={};
+  for(let i=0;i<n;i++){ const g=S.mechs[i].on&&S.mechs[i].group; if(g){ (groups[g]=groups[g]||[]).push(i); } }
+  for(const g in groups){
+    const ids=groups[g]; if(ids.length<2) continue;
+    let sumInv=0, slow=ids[0], slowLg=Infinity;
+    for(const i of ids){ if(lg[i]<slowLg){slowLg=lg[i]; slow=i;} }
+    if(slowLg===-Infinity){ for(const i of ids) contrib[i]=-Infinity; continue; }
+    for(const i of ids){ sumInv+=Math.pow(10, slowLg-lg[i]); }
+    const groupLg = slowLg - Math.log10(sumInv);
+    for(const i of ids) contrib[i] = (i===slow)? groupLg : -Infinity;
+  }
+  let mx=-Infinity, tot=0, dom=-1;
+  for(let i=0;i<n;i++){ if(contrib[i]>mx){mx=contrib[i];dom=i;} }
+  if(mx===-Infinity) return {total:-Infinity, contrib, dom:-1, sub:0};
+  for(let i=0;i<n;i++){ if(contrib[i]>-Infinity) tot+=Math.pow(10,contrib[i]-mx); }
+  return {total: mx+Math.log10(tot), contrib, dom, sub: sub[dom]};
+}
+function axisToPhys(v, varName){ if(varName==='invT') return 1e4/v; if(VARS[varName].log) return Math.pow(10,v); return v; }
+
+/* ----------------------------------------------------------- compute grid */
+let grid=null;
+function computeGrid(){
+  const a=S.axes, N=S.res, nx=N, ny=N;
+  const xs=new Float64Array(nx), ys=new Float64Array(ny);
+  for(let i=0;i<nx;i++) xs[i]=a.xmin+(a.xmax-a.xmin)*i/(nx-1);
+  for(let j=0;j<ny;j++) ys[j]=a.ymin+(a.ymax-a.ymin)*j/(ny-1);
+  const total=new Float64Array(nx*ny), dom=new Int16Array(nx*ny), sub=new Int8Array(nx*ny);
+  const nm=S.mechs.length, contrib=new Float64Array(nx*ny*nm);
+  for(let j=0;j<ny;j++) for(let i=0;i<nx;i++){
+    const vals={T:a.T, d:a.d, s:a.s};
+    vals[VARS[a.x].key]=axisToPhys(xs[i],a.x); vals[VARS[a.y].key]=axisToPhys(ys[j],a.y);
+    const r=evalPoint(vals.s, vals.T, vals.d, a), k=j*nx+i;
+    total[k]=r.total; dom[k]=r.dom; sub[k]=r.sub;
+    for(let m=0;m<nm;m++) contrib[k*nm+m]=r.contrib[m];
+  }
+  grid={xs,ys,nx,ny,total,dom,sub,contrib,nm};
+}
+
+/* ----------------------------------------------------------- marching squares */
+function contourLines(f, nx, ny, level){
+  // f(i,j) scalar; returns array of segments [[x0,y0,x1,y1]] in index coords
+  const segs=[];
+  const interp=(a,b,va,vb)=> a+(level-va)/(vb-va)*(b-a);
+  for(let j=0;j<ny-1;j++) for(let i=0;i<nx-1;i++){
+    const v0=f(i,j), v1=f(i+1,j), v2=f(i+1,j+1), v3=f(i,j+1);
+    if(![v0,v1,v2,v3].every(isFinite)) continue;
+    let c=(v0>=level?1:0)|(v1>=level?2:0)|(v2>=level?4:0)|(v3>=level?8:0);
+    if(c===0||c===15) continue;
+    const pts={ b:[interp(i,i+1,v0,v1), j], r:[i+1, interp(j,j+1,v1,v2)], t:[interp(i,i+1,v3,v2), j+1], l:[i, interp(j,j+1,v0,v3)] };
+    const push=(p,q)=>segs.push([pts[p][0],pts[p][1],pts[q][0],pts[q][1]]);
+    switch(c){
+      case 1: case 14: push('l','b'); break;
+      case 2: case 13: push('b','r'); break;
+      case 3: case 12: push('l','r'); break;
+      case 4: case 11: push('r','t'); break;
+      case 5: push('l','t'); push('b','r'); break;
+      case 6: case 9: push('b','t'); break;
+      case 7: case 8: push('l','t'); break;
+      case 10: push('l','b'); push('r','t'); break;
+    }
+  }
+  return segs;
+}
+
+/* ----------------------------------------------------------- drawing */
+const canvas=$('map'), ctx=canvas.getContext('2d');
+let layout=null;
+function mechColor(i, subI){ const m=S.mechs[i]; if(m.type==='breithaupt' && S.showSub && subI>0) return SUBCOLORS[subI]; return m.color; }
+function mechName(i, subI){ const m=S.mechs[i]; if(m.type==='breithaupt' && S.showSub && subI>0) return SUBNAMES[subI]; return m.name; }
+function hexToRgb(h){ const v=parseInt(h.slice(1),16); return [(v>>16)&255,(v>>8)&255,v&255]; }
+
+function draw(scale){
+  scale=scale||1;
+  const W=canvas.width, H=canvas.height, a=S.axes, g=grid;
+  const L=78*scale, Rm=22*scale, Tm=26*scale, Bm=62*scale;
+  const pw=W-L-Rm, ph=H-Tm-Bm;
+  layout={L,Tm,pw,ph};
+  const X=v=>L+(v-a.xmin)/(a.xmax-a.xmin)*pw, Y=v=>Tm+ph-(v-a.ymin)/(a.ymax-a.ymin)*ph;
+  const fs=13*scale;
+  ctx.setTransform(1,0,0,1,0,0); ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,W,H);
+
+  // fields: offscreen image at grid resolution, upscaled
+  const off=document.createElement('canvas'); off.width=g.nx; off.height=g.ny;
+  const octx=off.getContext('2d'), img=octx.createImageData(g.nx,g.ny);
+  const colCache={};
+  for(let j=0;j<g.ny;j++) for(let i=0;i<g.nx;i++){
+    const k=j*g.nx+i, d=g.dom[k]; let rgb=[255,255,255];
+    if(d>=0){ const key=d+':'+g.sub[k]; rgb = colCache[key] || (colCache[key]=hexToRgb(mechColor(d,g.sub[k]))); }
+    const p=((g.ny-1-j)*g.nx+i)*4; img.data[p]=rgb[0]; img.data[p+1]=rgb[1]; img.data[p+2]=rgb[2]; img.data[p+3]=255;
+  }
+  octx.putImageData(img,0,0);
+  ctx.save(); ctx.beginPath(); ctx.rect(L,Tm,pw,ph); ctx.clip();
+  ctx.imageSmoothingEnabled=true; ctx.drawImage(off, 0,0,g.nx,g.ny, L - pw/(2*(g.nx-1)), Tm - ph/(2*(g.ny-1)), pw*g.nx/(g.nx-1), ph*g.ny/(g.ny-1));
+  ctx.restore();
+
+  const ix=i=>a.xmin+(a.xmax-a.xmin)*i/(g.nx-1), jy=j=>a.ymin+(a.ymax-a.ymin)*j/(g.ny-1);
+  const drawSegs=(segs,style,lw)=>{ ctx.strokeStyle=style; ctx.lineWidth=lw; ctx.lineCap='round'; ctx.beginPath(); for(const s of segs){ ctx.moveTo(X(ix(s[0])),Y(jy(s[1]))); ctx.lineTo(X(ix(s[2])),Y(jy(s[3]))); } ctx.stroke(); };
+
+  // contours
+  ctx.save(); ctx.beginPath(); ctx.rect(L,Tm,pw,ph); ctx.clip();
+  const q = S.cq==='rate' ? (k=>g.total[k]) : (k=>{ const vals={T:a.T,d:a.d,s:a.s}; return null; });
+  let fvals;
+  if(S.cq==='rate') fvals=g.total; else {
+    fvals=new Float64Array(g.nx*g.ny);
+    for(let j=0;j<g.ny;j++) for(let i=0;i<g.nx;i++){ const k=j*g.nx+i; const sv = (VARS[a.x].key==='s')?axisToPhys(ix(i),a.x) : (VARS[a.y].key==='s')?axisToPhys(jy(j),a.y) : a.s; fvals[k]=Math.log10(sv*1e6/3)-g.total[k]; }
+  }
+  let fmin=Infinity,fmax=-Infinity; for(const v of fvals){ if(isFinite(v)){ if(v<fmin)fmin=v; if(v>fmax)fmax=v; } }
+  const labels=[];
+  if(isFinite(fmin)){
+    const lo=Math.max(Math.ceil(fmin/S.cstep)*S.cstep, S.cmin), hi=Math.min(Math.floor(fmax/S.cstep)*S.cstep, S.cmax);
+    let nlab=0;
+    for(let lv=lo; lv<=hi; lv+=S.cstep){
+      const segs=contourLines((i,j)=>fvals[j*g.nx+i], g.nx, g.ny, lv);
+      drawSegs(segs,'rgba(20,20,20,0.75)',0.9*scale);
+      if(S.clab && segs.length>12){
+        // label where the contour crosses a diagonal band, so labels do not pile up; local slope from neighbours
+        const frac = 0.35 + 0.3*((nlab++ % 3)/2);
+        const pick = segs.map(sg=>({sg, t: 0.5*(ix(sg[0])+ix(sg[2]))})).sort((p,q)=>p.t-q.t);
+        const s=pick[Math.floor(pick.length*frac)].sg;
+        const x0=X(ix(s[0])),y0=Y(jy(s[1])),x1=X(ix(s[2])),y1=Y(jy(s[3]));
+        let ang=Math.atan2(y1-y0,x1-x0); if(ang>Math.PI/2) ang-=Math.PI; if(ang<-Math.PI/2) ang+=Math.PI;
+        const cx=(x0+x1)/2, cy=(y0+y1)/2;
+        if(!labels.some(l=>Math.hypot(l.x-cx,l.y-cy)<34*scale)) labels.push({x:cx,y:cy,ang,lv});
+      }
+    }
+  }
+  // boundaries: contour of margin_i = contrib_i - max_{j != i} contrib_j at 0 (smooth), per field
+  if(S.showBounds){
+    const fieldsSeen=new Set(); for(let k=0;k<g.nx*g.ny;k++) if(g.dom[k]>=0) fieldsSeen.add(g.dom[k]+':'+g.sub[k]);
+    for(const key of fieldsSeen){
+      const [mi,si]=key.split(':').map(Number);
+      const f=(i,j)=>{ const k=j*g.nx+i; let own=-Infinity, other=-Infinity;
+        for(let m=0;m<g.nm;m++){ const v=g.contrib[k*g.nm+m]; if(m===mi){ own=v; } else if(v>other) other=v; }
+        if(S.mechs[mi].type==='breithaupt' && S.showSub){ // sub-field: inside the mechanism, use regime indicator
+          if(g.dom[k]===mi){ return (g.sub[k]===si? 1:-1); }
+          return own-other;
+        }
+        return own-other; };
+      drawSegs(contourLines(f,g.nx,g.ny,0),'#111111',2.2*scale);
+    }
+  }
+  ctx.restore();
+
+  // contour labels
+  ctx.font=`${fs*0.85}px "IBM Plex Mono", monospace`; ctx.textAlign='center'; ctx.textBaseline='middle';
+  for(const lb of labels){
+    const txt = S.cq==='rate' ? `10^${lb.lv} s⁻¹` : `10^${lb.lv} Pa s`;
+    ctx.save(); ctx.translate(lb.x,lb.y); ctx.rotate(lb.ang);
+    drawExpText(txt, 0, 0, fs*0.85, scale, true);
+    ctx.restore();
+  }
+  // field names at centroids
+  if(S.showNames){
+    const acc={};
+    for(let j=0;j<g.ny;j++) for(let i=0;i<g.nx;i++){ const k=j*g.nx+i; if(g.dom[k]<0) continue; const key=g.dom[k]+':'+g.sub[k]; const o=acc[key]||(acc[key]={n:0,sx:0,sy:0}); o.n++; o.sx+=i; o.sy+=j; }
+    ctx.font=`500 ${fs}px "IBM Plex Sans", sans-serif`;
+    for(const key in acc){ const o=acc[key]; if(o.n<0.012*g.nx*g.ny) continue; const [mi,si]=key.split(':').map(Number);
+      const x=X(ix(o.sx/o.n)), y=Y(jy(o.sy/o.n)); const name=mechName(mi,si);
+      ctx.lineWidth=4*scale; ctx.strokeStyle='rgba(255,255,255,0.85)'; ctx.lineJoin='round'; ctx.strokeText(name,x,y); ctx.fillStyle='#111'; ctx.fillText(name,x,y); }
+  }
+  // axes
+  ctx.strokeStyle='#111'; ctx.lineWidth=1.5*scale; ctx.strokeRect(L,Tm,pw,ph);
+  ctx.fillStyle='#111'; ctx.font=`${fs}px "IBM Plex Sans", sans-serif`;
+  const tick=6*scale;
+  const ticksFor=(v0,v1,log)=>{ const t=[]; if(log){ for(let e=Math.ceil(v0); e<=Math.floor(v1); e++) t.push(e); } else { const span=v1-v0, step=niceStep(span); for(let v=Math.ceil(v0/step)*step; v<=v1+1e-9; v+=step) t.push(+v.toFixed(6)); } return t; };
+  // x ticks
+  ctx.textAlign='center'; ctx.textBaseline='top';
+  for(const t of ticksFor(a.xmin,a.xmax,VARS[a.x].log)){ const x=X(t); ctx.beginPath(); ctx.moveTo(x,Tm+ph); ctx.lineTo(x,Tm+ph-tick); ctx.moveTo(x,Tm); ctx.lineTo(x,Tm+tick); ctx.stroke();
+    if(VARS[a.x].log) drawExpText('10^'+t, x, Tm+ph+6*scale, fs, scale, false); else ctx.fillText(String(t), x, Tm+ph+6*scale); }
+  if(VARS[a.x].log) for(let e=Math.floor(a.xmin); e<a.xmax; e++) for(let m=2;m<10;m++){ const v=e+Math.log10(m); if(v>a.xmin&&v<a.xmax){ const x=X(v); ctx.beginPath(); ctx.moveTo(x,Tm+ph); ctx.lineTo(x,Tm+ph-tick*0.5); ctx.moveTo(x,Tm); ctx.lineTo(x,Tm+tick*0.5); ctx.stroke(); } }
+  ctx.textBaseline='alphabetic'; ctx.fillText(VARS[a.x].label, L+pw/2, H-14*scale);
+  // y ticks
+  ctx.textAlign='right'; ctx.textBaseline='middle';
+  for(const t of ticksFor(a.ymin,a.ymax,VARS[a.y].log)){ const y=Y(t); ctx.beginPath(); ctx.moveTo(L,y); ctx.lineTo(L+tick,y); ctx.moveTo(L+pw,y); ctx.lineTo(L+pw-tick,y); ctx.stroke();
+    if(VARS[a.y].log) drawExpText('10^'+t, L-8*scale, y, fs, scale, false, 'right'); else ctx.fillText(String(t), L-8*scale, y); }
+  if(VARS[a.y].log) for(let e=Math.floor(a.ymin); e<a.ymax; e++) for(let m=2;m<10;m++){ const v=e+Math.log10(m); if(v>a.ymin&&v<a.ymax){ const y=Y(v); ctx.beginPath(); ctx.moveTo(L,y); ctx.lineTo(L+tick*0.5,y); ctx.moveTo(L+pw,y); ctx.lineTo(L+pw-tick*0.5,y); ctx.stroke(); } }
+  ctx.save(); ctx.translate(18*scale, Tm+ph/2); ctx.rotate(-Math.PI/2); ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(VARS[a.y].label,0,0); ctx.restore();
+  // title line with fixed conditions
+  const used=new Set([VARS[a.x].key,VARS[a.y].key]); const parts=[];
+  if(!used.has('T')) parts.push(`T = ${a.T} K`); if(!used.has('d')) parts.push(`d = ${a.d} µm`); if(!used.has('s')) parts.push(`σ = ${a.s} MPa`);
+  parts.push(`P = ${a.P} GPa`); if(a.COH>0) parts.push(`C_OH = ${a.COH} ppm H/Si`); if(a.phi>0) parts.push(`φ = ${a.phi}`);
+  ctx.textAlign='left'; ctx.textBaseline='middle'; ctx.font=`${fs*0.95}px "IBM Plex Sans", sans-serif`; ctx.fillStyle='#333'; ctx.fillText(parts.join('   '), L, Tm/2);
+  renderLegend();
+}
+function niceStep(span){ const raw=span/6, p=Math.pow(10,Math.floor(Math.log10(raw))); const r=raw/p; return (r<1.5?1:r<3.5?2:r<7.5?5:10)*p; }
+function drawExpText(txt, x, y, fs, scale, halo, align){
+  // txt like "10^-3 s⁻¹": draws base with superscript exponent
+  const m=txt.match(/^10\^(-?\d+)(.*)$/); ctx.save(); ctx.textBaseline='middle';
+  if(!m){ ctx.textAlign=align||'center'; if(halo){ctx.lineWidth=3*scale; ctx.strokeStyle='rgba(255,255,255,.85)'; ctx.strokeText(txt,x,y);} ctx.fillStyle='#111'; ctx.fillText(txt,x,y); ctx.restore(); return; }
+  const base='10', exp=m[1], rest=m[2];
+  ctx.font=`${fs}px "IBM Plex Mono", monospace`; const wb=ctx.measureText(base).width, wr=ctx.measureText(rest).width;
+  ctx.font=`${fs*0.7}px "IBM Plex Mono", monospace`; const we=ctx.measureText(exp).width;
+  const total=wb+we+wr; let x0 = (align==='right')? x-total : x-total/2;
+  const parts=[[base,fs,0],[exp,fs*0.7,-fs*0.45],[rest,fs,0]]; let cx=x0;
+  for(const [t,f,dy] of parts){ ctx.font=`${f}px "IBM Plex Mono", monospace`; ctx.textAlign='left'; if(halo){ctx.lineWidth=3*scale; ctx.strokeStyle='rgba(255,255,255,.85)'; ctx.strokeText(t,cx,y+dy);} ctx.fillStyle='#111'; ctx.fillText(t,cx,y+dy); cx+=ctx.measureText(t).width; }
+  ctx.restore();
+}
+function renderLegend(){
+  const host=$('legend'); host.innerHTML='';
+  const seen=new Set(); const g=grid;
+  for(let k=0;k<g.nx*g.ny;k+=7) if(g.dom[k]>=0) seen.add(g.dom[k]+':'+g.sub[k]);
+  for(const key of seen){ const [mi,si]=key.split(':').map(Number); const sp=document.createElement('span'); sp.innerHTML=`<i class="swatch" style="background:${mechColor(mi,si)}"></i>${mechName(mi,si)}`; host.appendChild(sp); }
+}
+
+/* ----------------------------------------------------------- hover readout */
+canvas.addEventListener('mousemove', e=>{
+  if(!layout||!grid) return;
+  const rect=canvas.getBoundingClientRect(), sx=canvas.width/rect.width, sy=canvas.height/rect.height;
+  const px=(e.clientX-rect.left)*sx, py=(e.clientY-rect.top)*sy, a=S.axes, {L,Tm,pw,ph}=layout;
+  if(px<L||px>L+pw||py<Tm||py>Tm+ph){ return; }
+  const xv=a.xmin+(px-L)/pw*(a.xmax-a.xmin), yv=a.ymax-(py-Tm)/ph*(a.ymax-a.ymin);
+  const vals={T:a.T,d:a.d,s:a.s}; vals[VARS[a.x].key]=axisToPhys(xv,a.x); vals[VARS[a.y].key]=axisToPhys(yv,a.y);
+  const r=evalPoint(vals.s,vals.T,vals.d,a);
+  const eta = vals.s*1e6/(3*Math.pow(10,r.total));
+  const dom = r.dom>=0? mechName(r.dom, r.sub) : 'none';
+  const shares = S.mechs.map((m,i)=> m.on && r.contrib[i]>-Infinity ? `${m.name.split(' ')[0]} ${(100*Math.pow(10,r.contrib[i]-r.total)).toFixed(0)}%` : null).filter(Boolean).join(' · ');
+  $('readout').innerHTML = `<span>T <b>${vals.T.toFixed(0)} K</b></span><span>d <b>${fmtNum(vals.d)} µm</b></span><span>σ <b>${fmtNum(vals.s)} MPa</b></span><span>ε̇ <b>${isFinite(r.total)?Math.pow(10,r.total).toExponential(2):'0'} s⁻¹</b></span><span>η <b>${isFinite(eta)?eta.toExponential(2):'∞'} Pa s</b></span><span>dominant <b>${dom}</b></span><span>${shares}</span>`;
+});
+
+/* ----------------------------------------------------------- export / settings */
+$('btnPng').addEventListener('click', ()=>{
+  const W=canvas.width,H=canvas.height; canvas.width=W*3; canvas.height=H*3; draw(3);
+  const url=canvas.toDataURL('image/png'); canvas.width=W; canvas.height=H; draw(1);
+  $('pngImg').src=url; $('pngLink').href=url; $('dlgPng').showModal();
+});
+$('pngClose').addEventListener('click', ()=>$('dlgPng').close());
+$('btnJson').addEventListener('click', ()=>{ $('jsonText').value=JSON.stringify({axes:S.axes, mechs:S.mechs, cq:S.cq, cstep:S.cstep, cmin:S.cmin, cmax:S.cmax, clab:S.clab, showBounds:S.showBounds, showNames:S.showNames, showSub:S.showSub}, (k,v)=> v===-Infinity?'-Inf':v, 2); $('jsonStatus').textContent=''; $('dlgJson').showModal(); });
+$('jsonClose').addEventListener('click', ()=>$('dlgJson').close());
+$('jsonCopy').addEventListener('click', async()=>{ try{ await navigator.clipboard.writeText($('jsonText').value); $('jsonStatus').textContent='Copied.'; }catch(e){ $('jsonText').select(); $('jsonStatus').textContent='Copy blocked here; select the text and copy it.'; } });
+$('jsonLoad').addEventListener('click', ()=>{ try{ const o=JSON.parse($('jsonText').value, (k,v)=> v==='-Inf'?-Infinity:v); if(!o.axes||!Array.isArray(o.mechs)) throw new Error('missing axes or mechs'); S.axes=o.axes; S.mechs=o.mechs; for(const k of ['cq','cstep','cmin','cmax','clab','showBounds','showNames','showSub']) if(k in o) S[k]=o[k]; syncAxesUI(); renderMechs(); schedule(); $('jsonStatus').textContent='Loaded.'; $('dlgJson').close(); }catch(e){ $('jsonStatus').textContent='Could not read that: '+e.message; } });
+$('btnAbout').addEventListener('click', ()=>$('dlgAbout').showModal());
+$('aboutClose').addEventListener('click', ()=>$('dlgAbout').close());
+
+/* ----------------------------------------------------------- run */
+let timer=null;
+function schedule(){ clearTimeout(timer); timer=setTimeout(()=>{ try{ computeGrid(); draw(1); }catch(e){ console.error(e); $('readout').textContent='Could not compute the map: '+e.message; } }, 60); }
+loadScenario('treatise'); syncAxesUI(); renderMechs(); schedule();
+</script>
+</body>
+</html>
