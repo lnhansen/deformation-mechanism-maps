@@ -131,7 +131,7 @@ dialog img{max-width:100%;border:1px solid var(--line);border-radius:6px}
   <section class="block">
     <h2>Conditions</h2>
     <div class="grid3">
-      <div class="field" id="fixTbox"><span>T (K)</span><input type="number" id="fixT" step="1"></div>
+      <div class="field" id="fixTbox"><span>T (°C)</span><input type="number" id="fixT" step="1"></div>
       <div class="field" id="fixDbox"><span>d (µm)</span><input type="number" id="fixD" step="any"></div>
       <div class="field" id="fixSbox"><span>σ (MPa)</span><input type="number" id="fixS" step="any"></div>
       <div class="field"><span>P (GPa)</span><input type="number" id="P" step="0.1"></div>
@@ -147,6 +147,7 @@ dialog img{max-width:100%;border:1px solid var(--line);border-radius:6px}
       <div class="field"><span>quantity</span><select id="cq"><option value="rate">strain rate</option><option value="visc">viscosity</option></select></div>
       <div class="field"><span>log₁₀ step</span><input type="number" id="cstep" step="1" min="1"></div>
       <div class="field"><span>labels</span><select id="clab"><option value="1">on</option><option value="0">off</option></select></div>
+      <div class="field"><span>label every</span><input type="number" id="clabEvery" step="1" min="1"></div>
       <div class="field"><span>log₁₀ min</span><input type="number" id="cmin" step="1"></div>
       <div class="field"><span>log₁₀ max</span><input type="number" id="cmax" step="1"></div>
     </div>
@@ -154,6 +155,8 @@ dialog img{max-width:100%;border:1px solid var(--line);border-radius:6px}
       <label><input type="checkbox" id="showBounds" checked> field boundaries</label>
       <label><input type="checkbox" id="showNames" checked> field names</label>
       <label><input type="checkbox" id="showSub" checked> Breithaupt sub-fields</label>
+      <label><input type="checkbox" id="showPiezo" checked> piezometers</label>
+      <label><input type="checkbox" id="showTs" checked> solidus</label>
     </div>
     <div class="row tight">
       <label>grid <select id="res"><option value="120">fast</option><option value="200" selected>normal</option><option value="320">fine</option></select></label>
@@ -200,10 +203,11 @@ dialog img{max-width:100%;border:1px solid var(--line);border-radius:6px}
   <h3>About these maps</h3>
   <div style="max-width:62ch;font-size:13.5px">
   <p>Each mechanism gives a strain rate at every point of the map. Mechanisms add in parallel unless they share a series group, in which case the slower one limits the group. The coloured field is the mechanism contributing the most strain rate; thin lines are contours of the total strain rate (or viscosity, σ/3ε̇).</p>
-  <p><b>Power law</b>: ε̇ = A σ<sup>n</sup> d<sup>−p</sup> C<sub>OH</sub><sup>r</sup> e<sup>αφ</sup> exp[−(E + PV)/RT], with an optional near-solidus enhancement exp[−ΔQ/R (1/T − 1/T<sub>c</sub>)] above T<sub>c</sub> = f T<sub>s</sub> (Hiraga).</p>
+  <p><b>Power law</b>: ε̇ = A σ<sup>n</sup> d<sup>−p</sup> C<sub>OH</sub><sup>r</sup> e<sup>αφ</sup> exp[−(E + PV)/RT], with an optional near-solidus enhancement exp[−ΔQ/R (1/T − 1/T<sub>c</sub>)] above T<sub>c</sub> = f T<sub>s</sub> (Yabe &amp; Hiraga 2020). The Treatise maps use T<sub>s</sub> = 1350 °C.</p>
   <p><b>Peierls law</b>: ε̇ = A σ<sup>n</sup> exp{−(E + PV)/RT [1 − (σ/σ<sub>P</sub>)<sup>p</sup>]<sup>q</sup>}.</p>
-  <p><b>Breithaupt model</b> (Breithaupt, Katz, Hansen &amp; Kumamoto, PNAS 2023): steady state of the Taylor-stress evolution equation with dynamic recovery and static recovery by pipe, grain-boundary and lattice diffusion, ε̇ = A′σ<sub>ρ</sub>² sinh[(σ − σ<sub>ρ</sub> − σ<sub>d</sub>)/σ<sub>ref</sub>]. Its field is split by what limits the rate: low-temperature plasticity (dynamic recovery), grain-size-insensitive creep (pipe-diffusion recovery), or grain-size-sensitive creep (grain-boundary recovery).</p>
-  <p>Units: stress MPa, grain size µm, temperature K, pressure GPa, activation energy kJ/mol, activation volume cm³/mol, strain rate s⁻¹. Pre-exponents are in those units.</p>
+  <p><b>Breithaupt model</b> (Breithaupt, Katz, Hansen &amp; Kumamoto, PNAS 2023): steady state of the Taylor-stress evolution equation with dynamic recovery and static recovery by pipe, grain-boundary and lattice diffusion, ε̇ = A′σ<sub>ρ</sub>² sinh[(σ − σ<sub>ρ</sub> − σ<sub>d</sub>)/σ<sub>ref</sub>]. Its field is split by the recovery process that balances storage: low-temperature plasticity (dynamic recovery), grain-size-insensitive (GSI) dislocation creep (recovery by pipe diffusion), or grain-size-sensitive (GSS) dislocation creep (recovery by grain-boundary diffusion).</p>
+  <p><b>Piezometers</b> (stress–grain-size maps): Karato et al. (1980), d = 8.3×10³ σ<sup>−1.18</sup>, dashed; Meyers &amp; Kohlstedt (2026), d = 315 σ<sup>−0.71</sup>, dash-dot (d in µm, σ in MPa).</p>
+  <p>Units: stress MPa, grain size µm, temperature °C (10⁴/T in K⁻¹; flow laws are evaluated in K), pressure GPa, activation energy kJ/mol, activation volume cm³/mol, strain rate s⁻¹. Pre-exponents are in those units.</p>
   <p class="hint">Rock and Mineral Physics Laboratory, University of Minnesota. Flow laws are taken from the cited papers; check parameters against the source before use in publications.</p>
   </div>
   <div class="row" style="margin-top:10px"><button id="aboutClose">Close</button></div>
@@ -222,7 +226,7 @@ function powerLaw(p, s, T, d, P, COH, phi){
   let lg = Math.log10(p.A) + p.n*Math.log10(s) - p.p*Math.log10(d) - (p.E*1e3 + P*1e9*p.V*1e-6)/(R*T)/LN10;
   if(p.r) lg += p.r*Math.log10(Math.max(COH,1e-30));
   if(p.alpha) lg += p.alpha*phi/LN10;
-  if(p.Xon){ const Tc = p.f*p.Ts; if(T>Tc) lg += -(p.dQ*1e3)/R*(1/T-1/Tc)/LN10; }
+  if(p.Xon){ const Tc = p.f*(p.Ts+273.15); if(T>Tc) lg += -(p.dQ*1e3)/R*(1/T-1/Tc)/LN10; }
   return lg;
 }
 // Peierls law
@@ -277,16 +281,16 @@ function breithaupt(p, s, T, dum, P){
 /* ----------------------------------------------------------- library */
 const PRESETS = {
   power: [
-    {id:'hk03_dif_dry', name:'Diffusion creep, dry', src:'Hirth & Kohlstedt 2003', A:1.5e9, n:1, p:3, E:375, V:6, r:0, alpha:30, Xon:false, Ts:1433, dQ:230, f:0.92},
-    {id:'hzk11_dif_dry', name:'Diffusion creep, dry (HZK11)', src:'Hansen, Zimmerman & Kohlstedt 2011', A:Math.pow(10,7.6), n:1, p:3, E:375, V:6, r:0, alpha:30, Xon:false, Ts:1433, dQ:230, f:0.92},
-    {id:'hk03_dif_wet', name:'Diffusion creep, wet', src:'Hirth & Kohlstedt 2003 (C_OH in ppm H/Si)', A:1e6, n:1, p:3, E:335, V:4, r:1, alpha:30, Xon:false, Ts:1433, dQ:230, f:0.92},
-    {id:'hk03_dis_dry', name:'Dislocation creep, dry', src:'Hirth & Kohlstedt 2003', A:1.1e5, n:3.5, p:0, E:530, V:18, r:0, alpha:45, Xon:false, Ts:1433, dQ:230, f:0.92},
-    {id:'hk03_dis_wet', name:'Dislocation creep, wet', src:'Hirth & Kohlstedt 2003 (C_OH in ppm H/Si)', A:90, n:3.5, p:0, E:480, V:11, r:1.2, alpha:45, Xon:false, Ts:1433, dQ:230, f:0.92},
-    {id:'hzk11_gbs', name:'GSS dislocation creep (disGBS)', src:'Hansen, Zimmerman & Kohlstedt 2011', A:Math.pow(10,4.8), n:2.9, p:0.73, E:445, V:18, r:0, alpha:30, Xon:false, Ts:1433, dQ:230, f:0.92},
-    {id:'hk03_gbs', name:'disGBS (HK03 form)', src:'Hirth & Kohlstedt 2003', A:6500, n:3.5, p:2, E:400, V:18, r:0, alpha:30, Xon:false, Ts:1433, dQ:230, f:0.92},
-    {id:'hiraga_dif', name:'Diffusion creep (Hiraga)', src:'Hiraga, 2026 (Treatise update); near-solidus enhancement above 0.92 T_s', A:1.12e10, n:1, p:3, E:470, V:6, r:0, alpha:0, Xon:true, Ts:1433, dQ:230, f:0.92},
-    {id:'hiraga_int', name:'Interface-controlled creep (Hiraga)', src:'Hiraga, 2026 (Treatise update); n = 3, p = 1, enhancement above 0.84 T_s', A:2.12e12, n:3, p:1, E:610, V:6, r:0, alpha:0, Xon:true, Ts:1433, dQ:230, f:0.84},
-    {id:'custom_power', name:'Custom power law', src:'', A:1, n:3, p:0, E:400, V:10, r:0, alpha:0, Xon:false, Ts:1433, dQ:230, f:0.9},
+    {id:'hk03_dif_dry', name:'Diffusion creep, dry', src:'Hirth & Kohlstedt 2003', A:1.5e9, n:1, p:3, E:375, V:6, r:0, alpha:30, Xon:false, Ts:1350, dQ:230, f:0.92},
+    {id:'hzk11_dif_dry', name:'Diffusion creep, dry (HZK11)', src:'Hansen, Zimmerman & Kohlstedt 2011', A:Math.pow(10,7.6), n:1, p:3, E:375, V:6, r:0, alpha:30, Xon:false, Ts:1350, dQ:230, f:0.92},
+    {id:'hk03_dif_wet', name:'Diffusion creep, wet', src:'Hirth & Kohlstedt 2003 (C_OH in ppm H/Si)', A:1e6, n:1, p:3, E:335, V:4, r:1, alpha:30, Xon:false, Ts:1350, dQ:230, f:0.92},
+    {id:'hk03_dis_dry', name:'Dislocation creep, dry', src:'Hirth & Kohlstedt 2003', A:1.1e5, n:3.5, p:0, E:530, V:18, r:0, alpha:45, Xon:false, Ts:1350, dQ:230, f:0.92},
+    {id:'hk03_dis_wet', name:'Dislocation creep, wet', src:'Hirth & Kohlstedt 2003 (C_OH in ppm H/Si)', A:90, n:3.5, p:0, E:480, V:11, r:1.2, alpha:45, Xon:false, Ts:1350, dQ:230, f:0.92},
+    {id:'hzk11_gbs', name:'GSS dislocation creep (disGBS)', src:'Hansen, Zimmerman & Kohlstedt 2011', A:Math.pow(10,4.8), n:2.9, p:0.73, E:445, V:18, r:0, alpha:30, Xon:false, Ts:1350, dQ:230, f:0.92},
+    {id:'hk03_gbs', name:'disGBS (HK03 form)', src:'Hirth & Kohlstedt 2003', A:6500, n:3.5, p:2, E:400, V:18, r:0, alpha:30, Xon:false, Ts:1350, dQ:230, f:0.92},
+    {id:'hiraga_dif', name:'Grain-boundary diffusion controlled creep', src:'Yabe & Hiraga 2020 (Treatise 2026, Eq. 41); near-solidus enhancement above 0.92 T_s, T_s = 1350 °C', A:1.12e10, n:1, p:3, E:470, V:6, r:0, alpha:0, Xon:true, Ts:1350, dQ:230, f:0.92},
+    {id:'hiraga_int', name:'Interface-reaction controlled creep', src:'Yabe & Hiraga 2020 (Treatise 2026, Eq. 44); n = 3, p = 1, enhancement above 0.84 T_s, T_s = 1350 °C', A:2.12e12, n:3, p:1, E:610, V:6, r:0, alpha:0, Xon:true, Ts:1350, dQ:230, f:0.84},
+    {id:'custom_power', name:'Custom power law', src:'', A:1, n:3, p:0, E:400, V:10, r:0, alpha:0, Xon:false, Ts:1350, dQ:230, f:0.9},
   ],
   peierls: [
     {id:'mei10', name:'Low-T plasticity (Mei et al.)', src:'Mei et al. 2010, D-DIA', A:1.4e-7, n:2, sP:5900, E:320, V:0, pp:0.5, q:1},
@@ -299,8 +303,11 @@ const PRESETS = {
     {id:'b23_pipe', name:'Breithaupt, pipe recovery only', src:'Breithaupt et al. 2023, Table S1 (Fig. 1A fit)', mu:65, b:5e-10, beta:2, alpha:2.46, sigP:3100, sigRhoMax:1800, dV:15, log10A:6.44, log10Rpipe:0.01, log10Rgb:-Infinity, log10Rlat:-Infinity, Q:453, dyn:true},
   ]
 };
-const SUBNAMES = ['', 'Low-T plasticity', 'Dislocation creep', 'GSS dislocation creep'];
-const SUBCOLORS = ['', '#cdce92', '#f06d4d', '#05a350'];
+const SUBNAMES = ['', 'Low-T plasticity', 'GSI dislocation creep', 'GSS dislocation creep'];
+// Treatise 2026 palette: diffusion creep in blues, dislocation creep in greens, shades
+// differing only slightly within each family
+const PAL = {gbd:'#86b2d6', irc:'#6e9dc8', gss:'#74ba96', gsi:'#92caab', ltp:'#b6ddc2'};
+const SUBCOLORS = ['', PAL.ltp, PAL.gsi, PAL.gss];
 
 function mech(type, presetId, extra){
   const p = JSON.parse(JSON.stringify(PRESETS[type].find(q=>q.id===presetId)));
@@ -310,60 +317,69 @@ function mech(type, presetId, extra){
 const SCENARIOS = {
   treatise: {
     name:'Treatise 2026 (Breithaupt + Hiraga)',
-    note:'The configuration of the updated Treatise chapter: Hiraga diffusion and interface laws in series, Breithaupt dislocation model split into its three fields.',
+    note:'Figures 22 and 23 of the updated Treatise chapter: grain-boundary diffusion controlled creep and interface-reaction controlled creep in series (Yabe & Hiraga 2020, T_s = 1350 °C), and the Breithaupt et al. (2023) dislocation model split into low-T plasticity, GSI and GSS dislocation creep. P = 0.',
     mechs: ()=>[
-      mech('power','hiraga_dif',{color:'#a6313d', group:'A'}),
-      mech('power','hiraga_int',{color:'#4a7db5', group:'A'}),
-      mech('breithaupt','b23_full',{color:'#f06d4d'}),
+      mech('power','hiraga_dif',{color:PAL.gbd, group:'A'}),
+      mech('power','hiraga_int',{color:PAL.irc, group:'A'}),
+      mech('breithaupt','b23_full',{color:PAL.gsi}),
     ],
-    axes:{x:'T', y:'s', xmin:873, xmax:1873, ymin:-1, ymax:4, T:1473, d:1000, s:100, P:0, COH:0, phi:0}
+    axes:{x:'T', y:'s', xmin:200, xmax:1700, ymin:-1, ymax:4, T:1300, d:10, s:100, P:0, COH:0, phi:0},
+    view:{cstep:1, cmin:-22, cmax:4, clabEvery:4}
+  },
+  treatise_d: {
+    name:'Treatise 2026, stress vs grain size (Fig. 23)',
+    note:'As Figure 23 of the Treatise chapter: stress against grain size at fixed temperature, with the recrystallized-grain-size piezometers of Karato et al. (1980) and Meyers & Kohlstedt (2026).',
+    mechs: ()=>SCENARIOS.treatise.mechs(),
+    axes:{x:'d', y:'s', xmin:0, xmax:5, ymin:-1, ymax:4, T:800, d:10, s:100, P:0, COH:0, phi:0},
+    view:{cstep:1, cmin:-22, cmax:4, clabEvery:4}
   },
   kh2015: {
     name:'Kohlstedt & Hansen 2015 (empirical, dry)',
     note:'The 2015 Treatise maps: HK03 diffusion and dislocation creep, Hansen et al. 2011 disGBS, Mei et al. 2010 low-T plasticity.',
     mechs: ()=>[
-      mech('power','hzk11_dif_dry',{color:'#a6313d'}),
-      mech('power','hzk11_gbs',{color:'#05a350'}),
-      mech('power','hk03_dis_dry',{color:'#f06d4d'}),
-      mech('peierls','mei10',{color:'#cdce92'}),
+      mech('power','hzk11_dif_dry',{color:PAL.gbd}),
+      mech('power','hzk11_gbs',{color:PAL.gss}),
+      mech('power','hk03_dis_dry',{color:PAL.gsi}),
+      mech('peierls','mei10',{color:PAL.ltp}),
     ],
-    axes:{x:'T', y:'s', xmin:873, xmax:1873, ymin:-1, ymax:4, T:1473, d:1000, s:100, P:0.3, COH:0, phi:0}
+    axes:{x:'T', y:'s', xmin:600, xmax:1600, ymin:-1, ymax:4, T:1200, d:1000, s:100, P:0.3, COH:0, phi:0}
   },
   hk03dry: {
     name:'Hirth & Kohlstedt 2003, dry',
     note:'Diffusion creep, disGBS and dislocation creep from HK03 with GBS in series with dislocation creep, as in their Table 1.',
     mechs: ()=>[
-      mech('power','hk03_dif_dry',{color:'#a6313d'}),
-      mech('power','hk03_gbs',{color:'#05a350', group:'A'}),
-      mech('power','hk03_dis_dry',{color:'#f06d4d', group:'A'}),
-      mech('peierls','mei10',{color:'#cdce92'}),
+      mech('power','hk03_dif_dry',{color:PAL.gbd}),
+      mech('power','hk03_gbs',{color:PAL.gss, group:'A'}),
+      mech('power','hk03_dis_dry',{color:PAL.gsi, group:'A'}),
+      mech('peierls','mei10',{color:PAL.ltp}),
     ],
-    axes:{x:'T', y:'s', xmin:873, xmax:1873, ymin:-1, ymax:4, T:1473, d:1000, s:100, P:0.3, COH:0, phi:0}
+    axes:{x:'T', y:'s', xmin:600, xmax:1600, ymin:-1, ymax:4, T:1200, d:1000, s:100, P:0.3, COH:0, phi:0}
   },
   hk03wet: {
     name:'Hirth & Kohlstedt 2003, wet (1000 ppm H/Si)',
     note:'Wet diffusion and dislocation creep from HK03 with C_OH = 1000 ppm H/Si.',
     mechs: ()=>[
-      mech('power','hk03_dif_wet',{color:'#a6313d'}),
-      mech('power','hk03_dis_wet',{color:'#f06d4d'}),
-      mech('peierls','mei10',{color:'#cdce92'}),
+      mech('power','hk03_dif_wet',{color:PAL.gbd}),
+      mech('power','hk03_dis_wet',{color:PAL.gsi}),
+      mech('peierls','mei10',{color:PAL.ltp}),
     ],
-    axes:{x:'T', y:'s', xmin:873, xmax:1873, ymin:-1, ymax:4, T:1473, d:1000, s:100, P:0.3, COH:1000, phi:0}
+    axes:{x:'T', y:'s', xmin:600, xmax:1600, ymin:-1, ymax:4, T:1200, d:1000, s:100, P:0.3, COH:1000, phi:0}
   },
 };
 
 /* ----------------------------------------------------------- state */
 const VARS = {
-  T:{label:'Temperature (K)', log:false, key:'T'},
+  T:{label:'Temperature (°C)', log:false, key:'T'},
   invT:{label:'10⁴/T (K⁻¹)', log:false, key:'T'},
   d:{label:'Grain size (µm)', log:true, key:'d'},
   s:{label:'Differential stress (MPa)', log:true, key:'s'},
 };
-const DEFAULT_RANGES = {T:[873,1873], invT:[5,12], d:[0,5], s:[-1,4]};
-let S = {scenario:'treatise', axes:null, mechs:[], cq:'rate', cstep:2, cmin:-22, cmax:2, clab:true, showBounds:true, showNames:true, showSub:true, res:200};
+const DEFAULT_RANGES = {T:[200,1700], invT:[5,12], d:[0,5], s:[-1,4]};
+let S = {scenario:'treatise', axes:null, mechs:[], cq:'rate', cstep:1, cmin:-22, cmax:4, clab:true, clabEvery:4, showBounds:true, showNames:true, showSub:true, showPiezo:true, showTs:true, res:200};
 function loadScenario(id){
   const sc = SCENARIOS[id]; S.scenario = id;
   S.axes = Object.assign({}, sc.axes); S.mechs = sc.mechs();
+  Object.assign(S, {cstep:2, cmin:-22, cmax:2, clabEvery:1}, sc.view||{});
   document.getElementById('scenarioNote').textContent = sc.note;
 }
 
@@ -383,24 +399,26 @@ function syncAxesUI(){
   const used = new Set([VARS[a.x].key, VARS[a.y].key]);
   $('fixTbox').style.opacity = used.has('T')?0.4:1; $('fixDbox').style.opacity = used.has('d')?0.4:1; $('fixSbox').style.opacity = used.has('s')?0.4:1;
   $('fixT').disabled = used.has('T'); $('fixD').disabled = used.has('d'); $('fixS').disabled = used.has('s');
-  $('cq').value=S.cq; $('cstep').value=S.cstep; $('cmin').value=S.cmin; $('cmax').value=S.cmax; $('clab').value=S.clab?'1':'0';
-  $('showBounds').checked=S.showBounds; $('showNames').checked=S.showNames; $('showSub').checked=S.showSub; $('res').value=S.res;
+  $('cq').value=S.cq; $('cstep').value=S.cstep; $('cmin').value=S.cmin; $('cmax').value=S.cmax; $('clab').value=S.clab?'1':'0'; $('clabEvery').value=S.clabEvery;
+  $('showBounds').checked=S.showBounds; $('showNames').checked=S.showNames; $('showSub').checked=S.showSub; $('showPiezo').checked=S.showPiezo; $('showTs').checked=S.showTs; $('res').value=S.res;
   scenarioSel.value=S.scenario;
 }
 function readAxesUI(){
   const a = S.axes;
   const nx=$('xvar').value, ny=$('yvar').value;
-  if(nx!==a.x){ a.x=nx; [a.xmin,a.xmax]=DEFAULT_RANGES[nx]; }
-  if(ny!==a.y){ a.y=ny; [a.ymin,a.ymax]=DEFAULT_RANGES[ny]; }
+  const xch = nx!==a.x, ych = ny!==a.y;
+  if(!xch){ a.xmin=+$('xmin').value; a.xmax=+$('xmax').value; }
+  if(!ych){ a.ymin=+$('ymin').value; a.ymax=+$('ymax').value; }
+  if(xch){ a.x=nx; [a.xmin,a.xmax]=DEFAULT_RANGES[nx]; }
+  if(ych){ a.y=ny; [a.ymin,a.ymax]=DEFAULT_RANGES[ny]; }
   if(VARS[a.x].key===VARS[a.y].key){ a.y = (VARS[a.x].key==='s')?'d':'s'; [a.ymin,a.ymax]=DEFAULT_RANGES[a.y]; }
-  for(const k of ['xmin','xmax','ymin','ymax']) a[k]=+$(k).value;
   a.T=+$('fixT').value; a.d=+$('fixD').value; a.s=+$('fixS').value; a.P=+$('P').value; a.COH=+$('COH').value; a.phi=+$('phi').value;
-  S.cq=$('cq').value; S.cstep=Math.max(1,+$('cstep').value||1); S.cmin=+$('cmin').value; S.cmax=+$('cmax').value; S.clab=$('clab').value==='1';
-  S.showBounds=$('showBounds').checked; S.showNames=$('showNames').checked; S.showSub=$('showSub').checked; S.res=+$('res').value;
+  S.cq=$('cq').value; S.cstep=Math.max(1,+$('cstep').value||1); S.cmin=+$('cmin').value; S.cmax=+$('cmax').value; S.clab=$('clab').value==='1'; S.clabEvery=Math.max(1,Math.round(+$('clabEvery').value||1));
+  S.showBounds=$('showBounds').checked; S.showNames=$('showNames').checked; S.showSub=$('showSub').checked; S.showPiezo=$('showPiezo').checked; S.showTs=$('showTs').checked; S.res=+$('res').value;
 }
 
 const FIELDS = {
-  power:[['A','A'],['n','n'],['p','p'],['E','E (kJ/mol)'],['V','V (cm³/mol)'],['r','r (C_OH)'],['alpha','α (melt)'],['Ts','T_s (K)'],['dQ','ΔQ (kJ/mol)'],['f','f = T_c/T_s']],
+  power:[['A','A'],['n','n'],['p','p'],['E','E (kJ/mol)'],['V','V (cm³/mol)'],['r','r (C_OH)'],['alpha','α (melt)'],['Ts','T_s (°C)'],['dQ','ΔQ (kJ/mol)'],['f','f = T_c/T_s']],
   peierls:[['A','A'],['n','n'],['sP','σ_P (MPa)'],['E','E (kJ/mol)'],['V','V (cm³/mol)'],['pp','p'],['q','q']],
   breithaupt:[['log10A','log₁₀A′*'],['log10Rpipe','log₁₀R′pipe*'],['log10Rgb','log₁₀R′gb*'],['log10Rlat','log₁₀R′lat*'],['Q','Q (kJ/mol)'],['dV','ΔV (cm³/mol)'],['sigP','σ_P* (MPa)'],['sigRhoMax','σ_ρ,max (MPa)'],['mu','μ (GPa)'],['b','b (m)'],['beta','β']],
 };
@@ -463,9 +481,9 @@ function renderMechs(){
     host.appendChild(div);
   });
 }
-$('addMech').addEventListener('click', ()=>{ S.mechs.push(mech('power','custom_power',{color:'#7a5fb5', open:true})); renderMechs(); schedule(); });
+$('addMech').addEventListener('click', ()=>{ S.mechs.push(mech('power','custom_power',{color:'#c9a96b', open:true})); renderMechs(); schedule(); });
 scenarioSel.addEventListener('change', ()=>{ loadScenario(scenarioSel.value); syncAxesUI(); renderMechs(); schedule(); });
-for(const id of ['xvar','yvar','xmin','xmax','ymin','ymax','fixT','fixD','fixS','P','COH','phi','cq','cstep','cmin','cmax','clab','showBounds','showNames','showSub','res'])
+for(const id of ['xvar','yvar','xmin','xmax','ymin','ymax','fixT','fixD','fixS','P','COH','phi','cq','cstep','cmin','cmax','clab','clabEvery','showBounds','showNames','showSub','showPiezo','showTs','res'])
   $(id).addEventListener('change', ()=>{ readAxesUI(); syncAxesUI(); schedule(); });
 
 /* ----------------------------------------------------------- model evaluation */
@@ -496,7 +514,8 @@ function evalPoint(s, T, d, a){
   for(let i=0;i<n;i++){ if(contrib[i]>-Infinity) tot+=Math.pow(10,contrib[i]-mx); }
   return {total: mx+Math.log10(tot), contrib, dom, sub: sub[dom]};
 }
-function axisToPhys(v, varName){ if(varName==='invT') return 1e4/v; if(VARS[varName].log) return Math.pow(10,v); return v; }
+// physical values: T in K (axes and the fixed-T box are in deg C), d um, s MPa
+function axisToPhys(v, varName){ if(varName==='invT') return 1e4/v; if(varName==='T') return v+273.15; if(VARS[varName].log) return Math.pow(10,v); return v; }
 
 /* ----------------------------------------------------------- compute grid */
 let grid=null;
@@ -508,7 +527,7 @@ function computeGrid(){
   const total=new Float64Array(nx*ny), dom=new Int16Array(nx*ny), sub=new Int8Array(nx*ny);
   const nm=S.mechs.length, contrib=new Float64Array(nx*ny*nm);
   for(let j=0;j<ny;j++) for(let i=0;i<nx;i++){
-    const vals={T:a.T, d:a.d, s:a.s};
+    const vals={T:a.T+273.15, d:a.d, s:a.s};
     vals[VARS[a.x].key]=axisToPhys(xs[i],a.x); vals[VARS[a.y].key]=axisToPhys(ys[j],a.y);
     const r=evalPoint(vals.s, vals.T, vals.d, a), k=j*nx+i;
     total[k]=r.total; dom[k]=r.dom; sub[k]=r.sub;
@@ -553,7 +572,7 @@ function hexToRgb(h){ const v=parseInt(h.slice(1),16); return [(v>>16)&255,(v>>8
 function draw(scale){
   scale=scale||1;
   const W=canvas.width, H=canvas.height, a=S.axes, g=grid;
-  const L=78*scale, Rm=22*scale, Tm=26*scale, Bm=62*scale;
+  const L=78*scale, Rm=22*scale, Tm=30*scale, Bm=62*scale;
   const pw=W-L-Rm, ph=H-Tm-Bm;
   layout={L,Tm,pw,ph};
   const X=v=>L+(v-a.xmin)/(a.xmax-a.xmin)*pw, Y=v=>Tm+ph-(v-a.ymin)/(a.ymax-a.ymin)*ph;
@@ -577,72 +596,177 @@ function draw(scale){
   const ix=i=>a.xmin+(a.xmax-a.xmin)*i/(g.nx-1), jy=j=>a.ymin+(a.ymax-a.ymin)*j/(g.ny-1);
   const drawSegs=(segs,style,lw)=>{ ctx.strokeStyle=style; ctx.lineWidth=lw; ctx.lineCap='round'; ctx.beginPath(); for(const s of segs){ ctx.moveTo(X(ix(s[0])),Y(jy(s[1]))); ctx.lineTo(X(ix(s[2])),Y(jy(s[3]))); } ctx.stroke(); };
 
-  // contours
-  ctx.save(); ctx.beginPath(); ctx.rect(L,Tm,pw,ph); ctx.clip();
-  const q = S.cq==='rate' ? (k=>g.total[k]) : (k=>{ const vals={T:a.T,d:a.d,s:a.s}; return null; });
+  // ---- layout of all text first, so contour lines can be cut where they pass under it
+  //      (as in the Treatise figures); field boundaries are never cut
+  const FONT='Helvetica, Arial, "Liberation Sans", sans-serif';
+  const boxes=[];                       // rotated rectangles in pixels: {x,y,ang,hw,hh}
+  const corners4=bx=>{ const c=Math.cos(bx.ang), s_=Math.sin(bx.ang); return [[-1,-1],[1,-1],[1,1],[-1,1]].map(([u,v])=>[bx.x+u*bx.hw*c-v*bx.hh*s_, bx.y+u*bx.hw*s_+v*bx.hh*c]); };
+  const overlap=(A,B)=>{ const ca=corners4(A), cb=corners4(B);   // separating-axis test for two rotated rectangles
+    for(const bx of [A,B]) for(const ax_ of [[Math.cos(bx.ang),Math.sin(bx.ang)],[-Math.sin(bx.ang),Math.cos(bx.ang)]]){
+      const pa=ca.map(([x,y])=>x*ax_[0]+y*ax_[1]), pb=cb.map(([x,y])=>x*ax_[0]+y*ax_[1]);
+      if(Math.max(...pa)<Math.min(...pb) || Math.max(...pb)<Math.min(...pa)) return false; }
+    return true; };
+  const fits=bx=>{ if(corners4(bx).some(([px,py])=>px<L+2||px>L+pw-2||py<Tm+2||py>Tm+ph-2)) return false; return !boxes.some(o=>overlap(o,bx)); };
+  const obstacles=[];                   // points (px) of field boundaries and overlay lines: no label may cover them
+  const covers=(bx,pts)=>{ const c=Math.cos(bx.ang), s_=Math.sin(bx.ang);
+    return pts.some(([px,py])=>{ const dx=px-bx.x, dy=py-bx.y; return Math.abs(dx*c+dy*s_)<=bx.hw+2*scale && Math.abs(-dx*s_+dy*c)<=bx.hh+2*scale; }); };
+  const hitBox=(px,py)=>boxes.some(bx=>{ const c=Math.cos(bx.ang), s_=Math.sin(bx.ang), dx=px-bx.x, dy=py-bx.y;
+    return Math.abs(dx*c+dy*s_)<=bx.hw && Math.abs(-dx*s_+dy*c)<=bx.hh; });
+
   let fvals;
   if(S.cq==='rate') fvals=g.total; else {
     fvals=new Float64Array(g.nx*g.ny);
     for(let j=0;j<g.ny;j++) for(let i=0;i<g.nx;i++){ const k=j*g.nx+i; const sv = (VARS[a.x].key==='s')?axisToPhys(ix(i),a.x) : (VARS[a.y].key==='s')?axisToPhys(jy(j),a.y) : a.s; fvals[k]=Math.log10(sv*1e6/3)-g.total[k]; }
   }
   let fmin=Infinity,fmax=-Infinity; for(const v of fvals){ if(isFinite(v)){ if(v<fmin)fmin=v; if(v>fmax)fmax=v; } }
-  const labels=[];
+  const levels=[];
   if(isFinite(fmin)){
     const lo=Math.max(Math.ceil(fmin/S.cstep)*S.cstep, S.cmin), hi=Math.min(Math.floor(fmax/S.cstep)*S.cstep, S.cmax);
-    let nlab=0;
-    for(let lv=lo; lv<=hi; lv+=S.cstep){
-      const segs=contourLines((i,j)=>fvals[j*g.nx+i], g.nx, g.ny, lv);
-      drawSegs(segs,'rgba(20,20,20,0.75)',0.9*scale);
-      if(S.clab && segs.length>12){
-        // label where the contour crosses a diagonal band, so labels do not pile up; local slope from neighbours
-        const frac = 0.35 + 0.3*((nlab++ % 3)/2);
-        const pick = segs.map(sg=>({sg, t: 0.5*(ix(sg[0])+ix(sg[2]))})).sort((p,q)=>p.t-q.t);
-        const s=pick[Math.floor(pick.length*frac)].sg;
-        const x0=X(ix(s[0])),y0=Y(jy(s[1])),x1=X(ix(s[2])),y1=Y(jy(s[3]));
-        let ang=Math.atan2(y1-y0,x1-x0); if(ang>Math.PI/2) ang-=Math.PI; if(ang<-Math.PI/2) ang+=Math.PI;
-        const cx=(x0+x1)/2, cy=(y0+y1)/2;
-        if(!labels.some(l=>Math.hypot(l.x-cx,l.y-cy)<34*scale)) labels.push({x:cx,y:cy,ang,lv});
-      }
-    }
+    for(let lv=lo; lv<=hi; lv+=S.cstep) levels.push({lv, segs:contourLines((i,j)=>fvals[j*g.nx+i], g.nx, g.ny, lv)});
   }
-  // boundaries: contour of margin_i = contrib_i - max_{j != i} contrib_j at 0 (smooth), per field
+  // field boundaries, computed before any label is placed
+  const boundarySegs=[];
   if(S.showBounds){
     const fieldsSeen=new Set(); for(let k=0;k<g.nx*g.ny;k++) if(g.dom[k]>=0) fieldsSeen.add(g.dom[k]+':'+g.sub[k]);
     for(const key of fieldsSeen){
       const [mi,si]=key.split(':').map(Number);
       const f=(i,j)=>{ const k=j*g.nx+i; let own=-Infinity, other=-Infinity;
         for(let m=0;m<g.nm;m++){ const v=g.contrib[k*g.nm+m]; if(m===mi){ own=v; } else if(v>other) other=v; }
-        if(S.mechs[mi].type==='breithaupt' && S.showSub){ // sub-field: inside the mechanism, use regime indicator
-          if(g.dom[k]===mi){ return (g.sub[k]===si? 1:-1); }
-          return own-other;
-        }
+        if(S.mechs[mi].type==='breithaupt' && S.showSub){ if(g.dom[k]===mi){ return (g.sub[k]===si? 1:-1); } }
+        // a series-group member that is not rate-limiting has no contribution (-Inf): treat as outside
+        if(own===-Infinity) return -1;
+        if(other===-Infinity) return 1;
         return own-other; };
-      drawSegs(contourLines(f,g.nx,g.ny,0),'#111111',2.2*scale);
+      boundarySegs.push(contourLines(f,g.nx,g.ny,0));
     }
   }
-  ctx.restore();
-
-  // contour labels
-  ctx.font=`${fs*0.85}px "IBM Plex Mono", monospace`; ctx.textAlign='center'; ctx.textBaseline='middle';
-  for(const lb of labels){
-    const txt = S.cq==='rate' ? `10^${lb.lv} s⁻¹` : `10^${lb.lv} Pa s`;
-    ctx.save(); ctx.translate(lb.x,lb.y); ctx.rotate(lb.ang);
-    drawExpText(txt, 0, 0, fs*0.85, scale, true);
-    ctx.restore();
-  }
-  // field names at centroids
+  for(const segs of boundarySegs) for(const q of segs){ const x0=X(ix(q[0])),y0=Y(jy(q[1])),x1=X(ix(q[2])),y1=Y(jy(q[3]));
+    for(let t=0;t<=4;t++) obstacles.push([x0+(x1-x0)*t/4, y0+(y1-y0)*t/4]); }
+  const lfs=fs*0.85;
+  const pre = S.cq==='rate' ? 'ε̇ = ' : 'η = ', unit = S.cq==='rate' ? ' s⁻¹' : ' Pa s';
+  // (1) field names: centroid of each field, wrapped to two lines when long
+  const names=[];
   if(S.showNames){
     const acc={};
     for(let j=0;j<g.ny;j++) for(let i=0;i<g.nx;i++){ const k=j*g.nx+i; if(g.dom[k]<0) continue; const key=g.dom[k]+':'+g.sub[k]; const o=acc[key]||(acc[key]={n:0,sx:0,sy:0}); o.n++; o.sx+=i; o.sy+=j; }
-    ctx.font=`500 ${fs}px "IBM Plex Sans", sans-serif`;
+    ctx.font=`${fs}px ${FONT}`;
     for(const key in acc){ const o=acc[key]; if(o.n<0.012*g.nx*g.ny) continue; const [mi,si]=key.split(':').map(Number);
-      const x=X(ix(o.sx/o.n)), y=Y(jy(o.sy/o.n)); const name=mechName(mi,si);
-      ctx.lineWidth=4*scale; ctx.strokeStyle='rgba(255,255,255,0.85)'; ctx.lineJoin='round'; ctx.strokeText(name,x,y); ctx.fillStyle='#111'; ctx.fillText(name,x,y); }
+      const x=X(ix(o.sx/o.n)), y=Y(jy(o.sy/o.n)); const lines=wrapName(mechName(mi,si), 22);
+      const lh=fs*1.18;
+      lines.forEach((t,n)=>{ const yy=y+(n-(lines.length-1)/2)*lh, w=ctx.measureText(t).width;
+        names.push({t,x,y:yy}); boxes.push({x,y:yy,ang:0,hw:w/2+3*scale,hh:fs*0.62}); });
+    }
   }
+  // (3) overlay lines: piezometers on stress-grain-size maps, solidus on temperature maps
+  const overlays=[];
+  const keyX=VARS[a.x].key, keyY=VARS[a.y].key;
+  if(S.showPiezo && new Set([keyX,keyY]).has('s') && new Set([keyX,keyY]).has('d')){
+    const piezos=[ {name:'Karato et al. (1980)', A:8.3e3, m:1.18, dash:[9,5]},
+                   {name:'Meyers and Kohlstedt (2026)', A:315, m:0.71, dash:[9,3.5,1.6,3.5]} ];
+    for(const pz of piezos){
+      const pts=[]; for(let e=-1; e<=6.0001; e+=0.02){ const d=Math.pow(10,e), sg=Math.pow(d/pz.A, -1/pz.m);
+        const xv = keyX==='d'? e : Math.log10(sg), yv = keyY==='d'? e : Math.log10(sg); pts.push([X(xv),Y(yv)]); }
+      overlays.push({pts, dash:pz.dash.map(v=>v*scale), lw:2.2*scale, label:pz.name});
+    }
+  }
+  if(S.showTs && (a.x==='T'||a.x==='invT'||a.y==='T'||a.y==='invT')){
+    const tsm=S.mechs.find(m=>m.on && m.type==='power' && m.Xon);
+    if(tsm){ const tc=tsm.Ts, v = (a.x==='T'||a.y==='T')? tc : 1e4/(tc+273.15);
+      const pts = (a.x==='T'||a.x==='invT') ? [[X(v),Tm],[X(v),Tm+ph]] : [[L,Y(v)],[L+pw,Y(v)]];
+      overlays.push({pts, dash:[7*scale,4*scale], lw:1.4*scale, label:null, ts:true}); }
+  }
+  // labels for overlays: parallel to the line, offset to one side, placed where they fit
+  const olabels=[];
+  ctx.font=`${lfs}px ${FONT}`;
+  for(const ov of overlays){
+    if(ov.ts){ const p0=ov.pts[0], vert=Math.abs(ov.pts[1][0]-p0[0])<1;
+      const x = vert? p0[0]+4*scale : L+pw-30*scale, y = vert? Tm+16*scale : p0[1]-10*scale;
+      olabels.push({ts:true,x,y}); boxes.push({x:x+8*scale,y,ang:0,hw:10*scale,hh:fs*0.7}); continue; }
+    const pin=ov.pts.filter(([x,y])=>x>=L&&x<=L+pw&&y>=Tm&&y<=Tm+ph); if(pin.length<4) continue;
+    const w=ctx.measureText(ov.label).width;
+    for(const fr of [0.55,0.45,0.65,0.35,0.75,0.25]){
+      const k=Math.floor(pin.length*fr), q0=pin[Math.max(0,k-3)], q1=pin[Math.min(pin.length-1,k+3)];
+      let dx=q1[0]-q0[0], dy=q1[1]-q0[1]; if(dx<0){dx=-dx;dy=-dy;} const ang=Math.atan2(dy,dx), n=Math.hypot(dx,dy)||1;
+      const off=lfs*0.95, cx=pin[k][0]+dy/n*off*(-1), cy=pin[k][1]-dx/n*off*(-1)*(-1);
+      const nx_=-dy/n, ny_=dx/n, xx=pin[k][0]-nx_*off, yy=pin[k][1]-ny_*off;   // above the line
+      const bx={x:xx,y:yy,ang,hw:w/2+2*scale,hh:lfs*0.55};
+      if(!fits(bx) || covers(bx,obstacles)) continue;
+      boxes.push(bx); olabels.push({x:xx,y:yy,ang,txt:ov.label}); break;
+    }
+  }
+
+  for(const ov of overlays){ for(let k=0;k<ov.pts.length-1;k++){ const [x0,y0]=ov.pts[k],[x1,y1]=ov.pts[k+1], n=Math.max(1,Math.ceil(Math.hypot(x1-x0,y1-y0)/(3*scale)));
+    for(let t=0;t<=n;t++) obstacles.push([x0+(x1-x0)*t/n, y0+(y1-y0)*t/n]); } }
+  // (2) contour labels: sit on the contour, rotated with it; every clabEvery-th level
+  const labels=[];
+  if(S.clab){
+    let nlab=0;
+    for(const L_ of levels){
+      if(Math.round(L_.lv/S.cstep) % S.clabEvery !== 0) continue;
+      if(L_.segs.length<12) continue;
+      const pick=L_.segs.map(sg=>({sg, t:0.5*(ix(sg[0])+ix(sg[2]))})).sort((p,q)=>p.t-q.t);
+      const txt=`${pre}10^${L_.lv}${unit}`, w=expTextWidth(txt,lfs);
+      // try positions along the contour until one fits (inside the frame, clear of other text)
+      const tries=[0.5,0.35,0.65,0.25,0.75,0.15,0.85].map(f=>(f+0.07*(nlab%3))%1);
+      for(const fr of tries){
+        const k0=Math.floor(pick.length*fr), sg=pick[k0].sg;
+        // direction from a run of neighbouring segments, so the angle follows the drawn line
+        const nb=pick.slice(Math.max(0,k0-3),k0+4).map(p=>p.sg);
+        let ux=0,uy=0; for(const q of nb){ let dx=X(ix(q[2]))-X(ix(q[0])), dy=Y(jy(q[3]))-Y(jy(q[1])); if(dx<0){dx=-dx;dy=-dy;} ux+=dx; uy+=dy; }
+        const ang=Math.atan2(uy,ux);
+        const cx=0.5*(X(ix(sg[0]))+X(ix(sg[2]))), cy=0.5*(Y(jy(sg[1]))+Y(jy(sg[3])));
+        const bx={x:cx,y:cy,ang,hw:w/2+1.5*scale,hh:lfs*0.55};
+        const c=Math.cos(ang), s_=Math.sin(ang);
+        if(!fits(bx) || covers(bx,obstacles)) continue;
+        // only its own contour may pass under a label: reject spots where neighbouring contours crowd in
+        const inBox=(px,py)=>{ const dx=px-cx, dy=py-cy; return Math.abs(dx*c+dy*s_)<=bx.hw+2*scale && Math.abs(-dx*s_+dy*c)<=bx.hh+1*scale; };
+        let crowded=false;
+        for(const M_ of levels){ if(M_===L_) continue;
+          for(const q of M_.segs){ const qx=0.5*(X(ix(q[0]))+X(ix(q[2]))), qy=0.5*(Y(jy(q[1]))+Y(jy(q[3])));
+            if(Math.abs(qx-cx)>bx.hw+10 || Math.abs(qy-cy)>bx.hw+10) continue;
+            if(inBox(qx,qy)){ crowded=true; break; } }
+          if(crowded) break; }
+        if(crowded) continue;
+        boxes.push(bx); labels.push({x:cx,y:cy,ang,txt}); nlab++; break;
+      }
+    }
+  }
+  // ---- thin contours, cut under text
+  ctx.save(); ctx.beginPath(); ctx.rect(L,Tm,pw,ph); ctx.clip();
+  ctx.strokeStyle='rgba(20,20,20,0.8)'; ctx.lineWidth=0.8*scale; ctx.lineCap='butt'; ctx.beginPath();
+  for(const L_ of levels) for(const sg of L_.segs){
+    const x0=X(ix(sg[0])),y0=Y(jy(sg[1])),x1=X(ix(sg[2])),y1=Y(jy(sg[3]));
+    const n=Math.max(1,Math.ceil(Math.hypot(x1-x0,y1-y0)/(1.5*scale)));
+    let down=false;
+    for(let t=0;t<=n;t++){ const px=x0+(x1-x0)*t/n, py=y0+(y1-y0)*t/n, hid=boxes.length&&hitBox(px,py);
+      if(hid){ down=false; continue; } if(!down){ ctx.moveTo(px,py); down=true; } else ctx.lineTo(px,py); }
+  }
+  ctx.stroke();
+  // ---- field boundaries (not cut)
+  for(const segs of boundarySegs) drawSegs(segs,'#111111',2.2*scale);
+  // ---- overlay lines; dashes skipped where they pass under text
+  for(const ov of overlays){
+    ctx.setLineDash(ov.dash); ctx.lineWidth=ov.lw; ctx.strokeStyle='#111'; ctx.beginPath();
+    let down=false;
+    for(let k=0;k<ov.pts.length-1;k++){ const [x0,y0]=ov.pts[k],[x1,y1]=ov.pts[k+1], n=Math.max(1,Math.ceil(Math.hypot(x1-x0,y1-y0)/(1.5*scale)));
+      for(let t=0;t<=n;t++){ const px=x0+(x1-x0)*t/n, py=y0+(y1-y0)*t/n; if(hitBox(px,py)){down=false;continue;} if(!down){ctx.moveTo(px,py);down=true;} else ctx.lineTo(px,py); } }
+    ctx.stroke(); ctx.setLineDash([]);
+  }
+  ctx.restore();
+
+  // ---- text on top
+  ctx.fillStyle='#111';
+  for(const lb of labels){ ctx.save(); ctx.translate(lb.x,lb.y); ctx.rotate(lb.ang); drawExpText(lb.txt,0,0,lfs,scale,false); ctx.restore(); }
+  ctx.font=`${lfs}px ${FONT}`; ctx.textAlign='center'; ctx.textBaseline='middle';
+  for(const ol of olabels){
+    if(ol.ts){ ctx.save(); ctx.font=`italic ${fs}px ${FONT}`; ctx.textAlign='left'; ctx.fillText('T',ol.x,ol.y); const w=ctx.measureText('T').width; ctx.font=`${fs*0.7}px ${FONT}`; ctx.fillText('s',ol.x+w,ol.y+fs*0.3); ctx.restore(); continue; }
+    ctx.save(); ctx.translate(ol.x,ol.y); ctx.rotate(ol.ang); ctx.fillText(ol.txt,0,0); ctx.restore(); }
+  ctx.font=`${fs}px ${FONT}`; ctx.textAlign='center'; ctx.textBaseline='middle';
+  for(const nm of names) drawItalicT(nm.t, nm.x, nm.y, fs, FONT);
   // axes
   ctx.strokeStyle='#111'; ctx.lineWidth=1.5*scale; ctx.strokeRect(L,Tm,pw,ph);
-  ctx.fillStyle='#111'; ctx.font=`${fs}px "IBM Plex Sans", sans-serif`;
-  const tick=6*scale;
+  ctx.fillStyle='#111'; ctx.font=`${fs*1.08}px ${FONT}`;
+  const tick=5*scale;
   const ticksFor=(v0,v1,log)=>{ const t=[]; if(log){ for(let e=Math.ceil(v0); e<=Math.floor(v1); e++) t.push(e); } else { const span=v1-v0, step=niceStep(span); for(let v=Math.ceil(v0/step)*step; v<=v1+1e-9; v+=step) t.push(+v.toFixed(6)); } return t; };
   // x ticks
   ctx.textAlign='center'; ctx.textBaseline='top';
@@ -658,23 +782,45 @@ function draw(scale){
   ctx.save(); ctx.translate(18*scale, Tm+ph/2); ctx.rotate(-Math.PI/2); ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(VARS[a.y].label,0,0); ctx.restore();
   // title line with fixed conditions
   const used=new Set([VARS[a.x].key,VARS[a.y].key]); const parts=[];
-  if(!used.has('T')) parts.push(`T = ${a.T} K`); if(!used.has('d')) parts.push(`d = ${a.d} µm`); if(!used.has('s')) parts.push(`σ = ${a.s} MPa`);
-  parts.push(`P = ${a.P} GPa`); if(a.COH>0) parts.push(`C_OH = ${a.COH} ppm H/Si`); if(a.phi>0) parts.push(`φ = ${a.phi}`);
-  ctx.textAlign='left'; ctx.textBaseline='middle'; ctx.font=`${fs*0.95}px "IBM Plex Sans", sans-serif`; ctx.fillStyle='#333'; ctx.fillText(parts.join('   '), L, Tm/2);
+  if(!used.has('T')) parts.push(`T = ${a.T} °C`); if(!used.has('d')) parts.push(`d = ${a.d} µm`); if(!used.has('s')) parts.push(`σ = ${a.s} MPa`);
+  if(a.P) parts.push(`P = ${a.P} GPa`); if(a.COH>0) parts.push(`C_OH = ${a.COH} ppm H/Si`); if(a.phi>0) parts.push(`φ = ${a.phi}`);
+  ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font=`${fs*1.08}px ${FONT}`; ctx.fillStyle='#111'; ctx.fillText(parts.join('    '), L+pw/2, Tm/2);
   renderLegend();
 }
 function niceStep(span){ const raw=span/6, p=Math.pow(10,Math.floor(Math.log10(raw))); const r=raw/p; return (r<1.5?1:r<3.5?2:r<7.5?5:10)*p; }
+const PFONT='Helvetica, Arial, "Liberation Sans", sans-serif';
+function splitExp(txt){ const m=txt.match(/^(.*?)10\^(-?\d+)(.*)$/); return m? {pre:m[1], exp:m[2].replace('-','−'), rest:m[3]} : null; }
+function expTextWidth(txt, fs){
+  const m=splitExp(txt); ctx.save(); ctx.font=`${fs}px ${PFONT}`;
+  if(!m){ const w=ctx.measureText(txt).width; ctx.restore(); return w; }
+  let w=ctx.measureText(m.pre+'10').width+ctx.measureText(m.rest).width; ctx.font=`${fs*0.7}px ${PFONT}`; w+=ctx.measureText(m.exp).width; ctx.restore(); return w;
+}
 function drawExpText(txt, x, y, fs, scale, halo, align){
-  // txt like "10^-3 s⁻¹": draws base with superscript exponent
-  const m=txt.match(/^10\^(-?\d+)(.*)$/); ctx.save(); ctx.textBaseline='middle';
-  if(!m){ ctx.textAlign=align||'center'; if(halo){ctx.lineWidth=3*scale; ctx.strokeStyle='rgba(255,255,255,.85)'; ctx.strokeText(txt,x,y);} ctx.fillStyle='#111'; ctx.fillText(txt,x,y); ctx.restore(); return; }
-  const base='10', exp=m[1], rest=m[2];
-  ctx.font=`${fs}px "IBM Plex Mono", monospace`; const wb=ctx.measureText(base).width, wr=ctx.measureText(rest).width;
-  ctx.font=`${fs*0.7}px "IBM Plex Mono", monospace`; const we=ctx.measureText(exp).width;
-  const total=wb+we+wr; let x0 = (align==='right')? x-total : x-total/2;
-  const parts=[[base,fs,0],[exp,fs*0.7,-fs*0.45],[rest,fs,0]]; let cx=x0;
-  for(const [t,f,dy] of parts){ ctx.font=`${f}px "IBM Plex Mono", monospace`; ctx.textAlign='left'; if(halo){ctx.lineWidth=3*scale; ctx.strokeStyle='rgba(255,255,255,.85)'; ctx.strokeText(t,cx,y+dy);} ctx.fillStyle='#111'; ctx.fillText(t,cx,y+dy); cx+=ctx.measureText(t).width; }
+  // "ε̇ = 10^-3 s⁻¹" or "10^-3": base text with a superscript exponent; ε̇ drawn italic
+  const m=splitExp(txt); ctx.save(); ctx.textBaseline='middle'; ctx.fillStyle='#111';
+  if(!m){ ctx.font=`${fs}px ${PFONT}`; ctx.textAlign=align||'center'; ctx.fillText(txt,x,y); ctx.restore(); return; }
+  const total=expTextWidth(txt,fs); let cx=(align==='right')? x-total : x-total/2;
+  const put=(t,f,dy,style)=>{ if(!t) return; ctx.font=`${style||''} ${f}px ${PFONT}`; ctx.textAlign='left'; ctx.fillText(t,cx,y+dy); cx+=ctx.measureText(t).width; };
+  const eps=m.pre.indexOf('ε̇');
+  if(eps>=0){ put(m.pre.slice(0,eps),fs,0);
+    ctx.font=`italic ${fs}px ${PFONT}`; const we=ctx.measureText('ε').width; const ex=cx;
+    put('ε',fs,0,'italic'); ctx.beginPath(); ctx.arc(ex+we*0.62, y-fs*0.52, Math.max(0.9,fs*0.065), 0, 2*Math.PI); ctx.fill();
+    put(m.pre.slice(eps+2),fs,0); } else put(m.pre,fs,0);
+  put('10',fs,0); put(m.exp,fs*0.7,-fs*0.42); put(m.rest,fs,0);
   ctx.restore();
+}
+function drawItalicT(t, x, y, fs, font){
+  // field names: the T of "Low-T" in italic, like the Treatise figures
+  const parts=t.split(/(-T\b)/); ctx.save(); ctx.textBaseline='middle'; ctx.textAlign='left';
+  let w=0; for(const p of parts){ ctx.font=`${p==='-T'?'italic ':''}${fs}px ${font}`; w+=ctx.measureText(p).width; }
+  let cx=x-w/2; for(const p of parts){ if(p==='-T'){ ctx.font=`${fs}px ${font}`; ctx.fillText('-',cx,y); cx+=ctx.measureText('-').width; ctx.font=`italic ${fs}px ${font}`; ctx.fillText('T',cx,y); cx+=ctx.measureText('T').width; } else { ctx.font=`${fs}px ${font}`; ctx.fillText(p,cx,y); cx+=ctx.measureText(p).width; } }
+  ctx.restore();
+}
+function wrapName(t, maxc){
+  if(t.length<=maxc) return [t];
+  const words=t.split(' '); let best=[t], bestd=Infinity;
+  for(let k=1;k<words.length;k++){ const a_=words.slice(0,k).join(' '), b_=words.slice(k).join(' '); const d=Math.abs(a_.length-b_.length); if(d<bestd){bestd=d; best=[a_,b_];} }
+  return best;
 }
 function renderLegend(){
   const host=$('legend'); host.innerHTML='';
@@ -690,12 +836,12 @@ canvas.addEventListener('mousemove', e=>{
   const px=(e.clientX-rect.left)*sx, py=(e.clientY-rect.top)*sy, a=S.axes, {L,Tm,pw,ph}=layout;
   if(px<L||px>L+pw||py<Tm||py>Tm+ph){ return; }
   const xv=a.xmin+(px-L)/pw*(a.xmax-a.xmin), yv=a.ymax-(py-Tm)/ph*(a.ymax-a.ymin);
-  const vals={T:a.T,d:a.d,s:a.s}; vals[VARS[a.x].key]=axisToPhys(xv,a.x); vals[VARS[a.y].key]=axisToPhys(yv,a.y);
+  const vals={T:a.T+273.15,d:a.d,s:a.s}; vals[VARS[a.x].key]=axisToPhys(xv,a.x); vals[VARS[a.y].key]=axisToPhys(yv,a.y);
   const r=evalPoint(vals.s,vals.T,vals.d,a);
   const eta = vals.s*1e6/(3*Math.pow(10,r.total));
   const dom = r.dom>=0? mechName(r.dom, r.sub) : 'none';
   const shares = S.mechs.map((m,i)=> m.on && r.contrib[i]>-Infinity ? `${m.name.split(' ')[0]} ${(100*Math.pow(10,r.contrib[i]-r.total)).toFixed(0)}%` : null).filter(Boolean).join(' · ');
-  $('readout').innerHTML = `<span>T <b>${vals.T.toFixed(0)} K</b></span><span>d <b>${fmtNum(vals.d)} µm</b></span><span>σ <b>${fmtNum(vals.s)} MPa</b></span><span>ε̇ <b>${isFinite(r.total)?Math.pow(10,r.total).toExponential(2):'0'} s⁻¹</b></span><span>η <b>${isFinite(eta)?eta.toExponential(2):'∞'} Pa s</b></span><span>dominant <b>${dom}</b></span><span>${shares}</span>`;
+  $('readout').innerHTML = `<span>T <b>${(vals.T-273.15).toFixed(0)} °C</b></span><span>d <b>${fmtNum(vals.d)} µm</b></span><span>σ <b>${fmtNum(vals.s)} MPa</b></span><span>ε̇ <b>${isFinite(r.total)?Math.pow(10,r.total).toExponential(2):'0'} s⁻¹</b></span><span>η <b>${isFinite(eta)?eta.toExponential(2):'∞'} Pa s</b></span><span>dominant <b>${dom}</b></span><span>${shares}</span>`;
 });
 
 /* ----------------------------------------------------------- export / settings */
@@ -705,10 +851,11 @@ $('btnPng').addEventListener('click', ()=>{
   $('pngImg').src=url; $('pngLink').href=url; $('dlgPng').showModal();
 });
 $('pngClose').addEventListener('click', ()=>$('dlgPng').close());
-$('btnJson').addEventListener('click', ()=>{ $('jsonText').value=JSON.stringify({axes:S.axes, mechs:S.mechs, cq:S.cq, cstep:S.cstep, cmin:S.cmin, cmax:S.cmax, clab:S.clab, showBounds:S.showBounds, showNames:S.showNames, showSub:S.showSub}, (k,v)=> v===-Infinity?'-Inf':v, 2); $('jsonStatus').textContent=''; $('dlgJson').showModal(); });
+$('btnJson').addEventListener('click', ()=>{ $('jsonText').value=JSON.stringify({units:'degC', axes:S.axes, mechs:S.mechs, cq:S.cq, cstep:S.cstep, cmin:S.cmin, cmax:S.cmax, clab:S.clab, clabEvery:S.clabEvery, showBounds:S.showBounds, showNames:S.showNames, showSub:S.showSub, showPiezo:S.showPiezo, showTs:S.showTs}, (k,v)=> v===-Infinity?'-Inf':v, 2); $('jsonStatus').textContent=''; $('dlgJson').showModal(); });
 $('jsonClose').addEventListener('click', ()=>$('dlgJson').close());
 $('jsonCopy').addEventListener('click', async()=>{ try{ await navigator.clipboard.writeText($('jsonText').value); $('jsonStatus').textContent='Copied.'; }catch(e){ $('jsonText').select(); $('jsonStatus').textContent='Copy blocked here; select the text and copy it.'; } });
-$('jsonLoad').addEventListener('click', ()=>{ try{ const o=JSON.parse($('jsonText').value, (k,v)=> v==='-Inf'?-Infinity:v); if(!o.axes||!Array.isArray(o.mechs)) throw new Error('missing axes or mechs'); S.axes=o.axes; S.mechs=o.mechs; for(const k of ['cq','cstep','cmin','cmax','clab','showBounds','showNames','showSub']) if(k in o) S[k]=o[k]; syncAxesUI(); renderMechs(); schedule(); $('jsonStatus').textContent='Loaded.'; $('dlgJson').close(); }catch(e){ $('jsonStatus').textContent='Could not read that: '+e.message; } });
+$('jsonLoad').addEventListener('click', ()=>{ try{ const o=JSON.parse($('jsonText').value, (k,v)=> v==='-Inf'?-Infinity:v); if(!o.axes||!Array.isArray(o.mechs)) throw new Error('missing axes or mechs'); if(o.units!=='degC'){ o.axes.T-=273.15; if(o.axes.x==='T'){o.axes.xmin-=273.15;o.axes.xmax-=273.15;} if(o.axes.y==='T'){o.axes.ymin-=273.15;o.axes.ymax-=273.15;} for(const m of o.mechs) if('Ts' in m) m.Ts-=273.15; }
+    S.axes=o.axes; S.mechs=o.mechs; for(const k of ['cq','cstep','cmin','cmax','clab','clabEvery','showBounds','showNames','showSub','showPiezo','showTs']) if(k in o) S[k]=o[k]; syncAxesUI(); renderMechs(); schedule(); $('jsonStatus').textContent='Loaded.'; $('dlgJson').close(); }catch(e){ $('jsonStatus').textContent='Could not read that: '+e.message; } });
 $('btnAbout').addEventListener('click', ()=>$('dlgAbout').showModal());
 $('aboutClose').addEventListener('click', ()=>$('dlgAbout').close());
 
