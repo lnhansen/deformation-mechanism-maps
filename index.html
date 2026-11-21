@@ -33,7 +33,9 @@ header h1{font-family:var(--display);font-weight:500;font-size:22px;margin:0;let
 header .sub{color:var(--muted);font-size:13px}
 header .spacer{flex:1}
 header .actions{display:flex;gap:8px;flex-wrap:wrap}
-main{flex:1;display:grid;grid-template-columns:380px 1fr;min-height:0}
+main{flex:1;display:grid;grid-template-columns:340px minmax(0,1fr);min-height:0}
+body.nocontrols main{grid-template-columns:minmax(0,1fr)}
+body.nocontrols aside{display:none}
 aside{border-right:1px solid var(--line);background:var(--panel);overflow-y:auto;padding:14px 16px 40px}
 section.block{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:12px}
 section.block>h2{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 8px;font-weight:600;display:flex;align-items:center;gap:8px}
@@ -75,7 +77,8 @@ button.icon{padding:3px 7px;line-height:1}
 .swatch{width:14px;height:14px;border-radius:3px;border:1px solid rgba(0,0,0,.2);flex:none}
 input[type=color]{width:26px;height:22px;border:1px solid var(--line);border-radius:4px;padding:0;background:none;cursor:pointer}
 .plot{position:relative;display:flex;flex-direction:column;min-width:0;padding:14px 18px 10px}
-.plot canvas{width:100%;height:auto;display:block;border:1px solid var(--line);border-radius:8px;background:#fff}
+.plot{overflow:auto}
+.plot canvas{display:block;border:1px solid var(--line);border-radius:8px;background:#fff;max-width:100%;margin:0 auto}
 .readout{font-family:var(--mono);font-size:12.5px;color:var(--muted);padding:8px 2px;display:flex;gap:18px;flex-wrap:wrap;min-height:34px}
 .readout b{color:var(--ink);font-weight:500}
 .legend{display:flex;gap:14px;flex-wrap:wrap;padding:4px 2px 0;font-size:12.5px}
@@ -88,11 +91,17 @@ dialog h3{margin:0 0 10px;font-family:var(--display);font-weight:500}
 dialog textarea{width:100%;height:260px;font-family:var(--mono);font-size:12px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:8px}
 dialog img{max-width:100%;border:1px solid var(--line);border-radius:6px}
 .status{font-size:12px;color:var(--warn);min-height:16px;margin-top:6px}
+@media (max-height:820px){ header{padding:7px 16px} header h1{font-size:19px} }
 @media (max-width:860px){
-  main{grid-template-columns:1fr;overflow:auto}
-  aside{border-right:0;border-bottom:1px solid var(--line);max-height:none;overflow:visible}
-  header{padding:10px 16px}
-  .plot{padding:12px 16px}
+  html,body{height:auto}
+  main{grid-template-columns:minmax(0,1fr);overflow:visible}
+  aside{min-width:0}
+  .plot{order:-1;padding:10px 16px;overflow:visible}
+  aside{border-right:0;border-top:1px solid var(--line);max-height:none;overflow:visible}
+  header{padding:8px 16px;gap:8px}
+  header .sub{display:none}
+  header h1{font-size:18px}
+  .readout{font-size:11.5px;gap:10px}
 }
 </style>
 </head>
@@ -102,6 +111,7 @@ dialog img{max-width:100%;border:1px solid var(--line);border-radius:6px}
   <span class="sub">Olivine by default; any flow law you can write as a power law, a Peierls law, or the Breithaupt dislocation model</span>
   <span class="spacer"></span>
   <div class="actions">
+    <button id="btnCtl" title="Show or hide the control panel">Hide controls</button>
     <button id="btnPng" title="Render the current map at 3× resolution">Export PNG</button>
     <button id="btnJson" title="Copy or paste a complete settings file">Settings JSON</button>
     <button id="btnAbout">About</button>
@@ -572,11 +582,11 @@ function hexToRgb(h){ const v=parseInt(h.slice(1),16); return [(v>>16)&255,(v>>8
 function draw(scale){
   scale=scale||1;
   const W=canvas.width, H=canvas.height, a=S.axes, g=grid;
-  const L=78*scale, Rm=22*scale, Tm=30*scale, Bm=62*scale;
+  const L=78*scale*TS, Rm=22*scale*TS, Tm=30*scale*TS, Bm=62*scale*TS;
   const pw=W-L-Rm, ph=H-Tm-Bm;
   layout={L,Tm,pw,ph};
   const X=v=>L+(v-a.xmin)/(a.xmax-a.xmin)*pw, Y=v=>Tm+ph-(v-a.ymin)/(a.ymax-a.ymin)*ph;
-  const fs=13*scale;
+  const fs=13*scale*TS;
   ctx.setTransform(1,0,0,1,0,0); ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,W,H);
 
   // fields: offscreen image at grid resolution, upscaled
@@ -653,8 +663,11 @@ function draw(scale){
     for(const key in acc){ const o=acc[key]; if(o.n<0.012*g.nx*g.ny) continue; const [mi,si]=key.split(':').map(Number);
       const x=X(ix(o.sx/o.n)), y=Y(jy(o.sy/o.n)); const lines=wrapName(mechName(mi,si), 22);
       const lh=fs*1.18;
-      lines.forEach((t,n)=>{ const yy=y+(n-(lines.length-1)/2)*lh, w=ctx.measureText(t).width;
-        names.push({t,x,y:yy}); boxes.push({x,y:yy,ang:0,hw:w/2+3*scale,hh:fs*0.62}); });
+      const wmax=Math.max(...lines.map(t=>ctx.measureText(t).width));
+      const xc=Math.min(Math.max(x, L+wmax/2+5*scale), L+pw-wmax/2-5*scale);   // keep the name inside the frame
+      const yc=Math.min(Math.max(y, Tm+lines.length*lh/2+3*scale), Tm+ph-lines.length*lh/2-3*scale);
+      lines.forEach((t,n)=>{ const yy=yc+(n-(lines.length-1)/2)*lh, w=ctx.measureText(t).width;
+        names.push({t,x:xc,y:yy}); boxes.push({x:xc,y:yy,ang:0,hw:w/2+3*scale,hh:fs*0.62}); });
     }
   }
   // (3) overlay lines: piezometers on stress-grain-size maps, solidus on temperature maps
@@ -846,8 +859,9 @@ canvas.addEventListener('mousemove', e=>{
 
 /* ----------------------------------------------------------- export / settings */
 $('btnPng').addEventListener('click', ()=>{
-  const W=canvas.width,H=canvas.height; canvas.width=W*3; canvas.height=H*3; draw(3);
-  const url=canvas.toDataURL('image/png'); canvas.width=W; canvas.height=H; draw(1);
+  // export at a fixed 900 x 760 layout, 3x, whatever the screen size
+  const W=canvas.width,H=canvas.height, ts0=TS; TS=1; canvas.width=900*3; canvas.height=760*3; draw(3);
+  const url=canvas.toDataURL('image/png'); TS=ts0; canvas.width=W; canvas.height=H; draw(DPR);
   $('pngImg').src=url; $('pngLink').href=url; $('dlgPng').showModal();
 });
 $('pngClose').addEventListener('click', ()=>$('dlgPng').close());
@@ -861,7 +875,28 @@ $('aboutClose').addEventListener('click', ()=>$('dlgAbout').close());
 
 /* ----------------------------------------------------------- run */
 let timer=null;
-function schedule(){ clearTimeout(timer); timer=setTimeout(()=>{ try{ computeGrid(); draw(1); }catch(e){ console.error(e); $('readout').textContent='Could not compute the map: '+e.message; } }, 60); }
+// ---- size the canvas to the space available: square plot area plus margins, never taller
+//      than the window, text scaled down a little on small screens
+let TS=1, DPR=1;
+function fitCanvas(){
+  const host=canvas.parentElement, cs=getComputedStyle(host);
+  const availW=host.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight);
+  const narrow=window.innerWidth<=860;
+  const top=narrow? 0 : canvas.getBoundingClientRect().top;
+  const availH=narrow? Infinity : window.innerHeight-top-80;           // room for readout and legend
+  const p0=Math.max(200, Math.min(availW-100, availH-92));               // plot side at TS = 1
+  TS=Math.max(0.78, Math.min(1, p0/560));
+  const p=Math.max(160, Math.min(availW-100*TS, availH-92*TS));
+  const cssW=Math.round(p+100*TS), cssH=Math.round(p+92*TS);
+  DPR=Math.min(3, window.devicePixelRatio||1);
+  canvas.style.width=cssW+'px'; canvas.style.height=cssH+'px';
+  canvas.width=Math.round(cssW*DPR); canvas.height=Math.round(cssH*DPR);
+}
+let rsTimer=null;
+function onResize(){ clearTimeout(rsTimer); rsTimer=setTimeout(()=>{ fitCanvas(); if(grid) draw(DPR); }, 80); }
+window.addEventListener('resize', onResize);
+$('btnCtl').addEventListener('click', ()=>{ const off=document.body.classList.toggle('nocontrols'); $('btnCtl').textContent=off?'Show controls':'Hide controls'; onResize(); });
+function schedule(){ clearTimeout(timer); timer=setTimeout(()=>{ try{ fitCanvas(); computeGrid(); draw(DPR); }catch(e){ console.error(e); $('readout').textContent='Could not compute the map: '+e.message; } }, 60); }
 loadScenario('treatise'); syncAxesUI(); renderMechs(); schedule();
 </script>
 </body>
