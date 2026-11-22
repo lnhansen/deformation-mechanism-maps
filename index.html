@@ -329,25 +329,18 @@ function mech(type, presetId, extra){
 
 const SCENARIOS = {
   treatise: {
-    name:'Treatise 2026 (Breithaupt + Hiraga)',
-    note:'Figures 22 and 23 of the updated Treatise chapter: grain-boundary diffusion controlled creep and interface-reaction controlled creep in series (Yabe & Hiraga 2020, T_s = 1350 °C), and the Breithaupt et al. (2023) dislocation model split into low-T plasticity, GSI and GSS dislocation creep. P = 0.',
+    name:'Breithaupt & Hiraga',
+    note:'Figures 22 and 23 of the 2026 Treatise chapter: Yabe & Hiraga (2020) diffusion creep, T_s = 1350 °C, with the Breithaupt et al. (2023) dislocation model. Set the x axis to temperature for the Figure 22 form.',
     mechs: ()=>[
       mech('power','hiraga_dif',{color:PAL.gbd, group:'A'}),
       mech('power','hiraga_int',{color:PAL.irc, group:'A'}),
       mech('breithaupt','b23_full',{color:PAL.gsi}),
     ],
-    axes:{x:'T', y:'s', xmin:200, xmax:1700, ymin:-1, ymax:4, T:1300, d:10, s:100, P:0, COH:0, phi:0},
-    view:{cstep:1, cmin:-22, cmax:4, clabEvery:4}
-  },
-  treatise_d: {
-    name:'Treatise 2026, stress vs grain size (Fig. 23)',
-    note:'As Figure 23 of the Treatise chapter: stress against grain size at fixed temperature, with the recrystallized-grain-size piezometers of Karato et al. (1980) and Meyers & Kohlstedt (2026).',
-    mechs: ()=>SCENARIOS.treatise.mechs(),
     axes:{x:'d', y:'s', xmin:0, xmax:5, ymin:-1, ymax:4, T:800, d:10, s:100, P:0, COH:0, phi:0},
     view:{cstep:1, cmin:-22, cmax:4, clabEvery:4}
   },
   kh2015: {
-    name:'Kohlstedt & Hansen 2015 (empirical, dry)',
+    name:'Hansen, Zimmerman & Kohlstedt',
     note:'The 2015 Treatise maps: Hansen et al. 2011 diffusion creep and GSS dislocation creep (disGBS), HK03 GSI dislocation creep, Mei et al. 2010 low-T plasticity.',
     mechs: ()=>[
       mech('power','hzk11_dif_dry',{color:PAL.gbd}),
