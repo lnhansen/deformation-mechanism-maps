@@ -233,7 +233,9 @@ function lse3(a,b,c){ const m=Math.max(a,b,c); if(m===-Infinity) return -Infinit
 
 // power law: returns log10 rate
 function powerLaw(p, s, T, d, P, COH, phi){
-  let lg = Math.log10(p.A) + p.n*Math.log10(s) - p.p*Math.log10(d) - (p.E*1e3 + P*1e9*p.V*1e-6)/(R*T)/LN10;
+  const hi = (p.Tsw!=null && T>=p.Tsw+273.15);   // optional second branch above T_sw
+  const A = hi ? p.A2 : p.A, Ea = hi ? p.E2 : p.E;
+  let lg = Math.log10(A) + p.n*Math.log10(s) - p.p*Math.log10(d) - (Ea*1e3 + P*1e9*p.V*1e-6)/(R*T)/LN10;
   if(p.r) lg += p.r*Math.log10(Math.max(COH,1e-30));
   if(p.alpha) lg += p.alpha*phi/LN10;
   if(p.Xon){ const Tc = p.f*(p.Ts+273.15); if(T>Tc) lg += -(p.dQ*1e3)/R*(1/T-1/Tc)/LN10; }
@@ -297,14 +299,15 @@ const PRESETS = {
     {id:'hk03_dis_dry', name:'GSI dislocation creep', cite:'Hirth & Kohlstedt 2003, dry', src:'Hirth & Kohlstedt 2003', A:1.1e5, n:3.5, p:0, E:530, V:18, r:0, alpha:45, Xon:false, Ts:1350, dQ:230, f:0.92},
     {id:'hk03_dis_wet', name:'GSI dislocation creep', cite:'Hirth & Kohlstedt 2003, wet', src:'Hirth & Kohlstedt 2003 (C_OH in ppm H/Si)', A:90, n:3.5, p:0, E:480, V:11, r:1.2, alpha:45, Xon:false, Ts:1350, dQ:230, f:0.92},
     {id:'hzk11_gbs', name:'GSS dislocation creep', cite:'Hansen et al. 2011', src:'Hansen, Zimmerman & Kohlstedt 2011', A:Math.pow(10,4.8), n:2.9, p:0.73, E:445, V:18, r:0, alpha:30, Xon:false, Ts:1350, dQ:230, f:0.92},
-    {id:'hk03_gbs', name:'GSS dislocation creep', cite:'Hirth & Kohlstedt 2003', src:'Hirth & Kohlstedt 2003', A:6500, n:3.5, p:2, E:400, V:18, r:0, alpha:30, Xon:false, Ts:1350, dQ:230, f:0.92},
+    {id:'hk03_gbs', name:'GSS dislocation creep', cite:'Hirth & Kohlstedt 2003', src:'Hirth & Kohlstedt 2003, GBS component of disGBS: A = 6500, E = 400 kJ/mol below 1250 °C; A = 4.7e10, E = 600 kJ/mol above (as in Warren & Hirth 2006, olflow_v12.m)', Tsw:1250, A2:4.7e10, E2:600, A:6500, n:3.5, p:2, E:400, V:18, r:0, alpha:30, Xon:false, Ts:1350, dQ:230, f:0.92},
+    {id:'hk03_easy', name:'Easy slip', cite:'Hirth & Kohlstedt 2003', src:'Easy-slip component of disGBS, in series with GBS (Hirth & Kohlstedt 2003; Warren & Hirth 2006, olflow_v12.m)', A:22.2, n:3.5, p:0, E:400, V:18, r:0, alpha:0, Xon:false, Ts:1350, dQ:230, f:0.92},
     {id:'hiraga_dif', name:'Grain-boundary diffusion controlled creep', cite:'Yabe & Hiraga 2020', src:'Yabe & Hiraga 2020 (Treatise 2026, Eq. 41); near-solidus enhancement above 0.92 T_s, T_s = 1350 °C', A:1.12e10, n:1, p:3, E:470, V:6, r:0, alpha:0, Xon:true, Ts:1350, dQ:230, f:0.92},
     {id:'hiraga_int', name:'Interface-reaction controlled creep', cite:'Yabe & Hiraga 2020', src:'Yabe & Hiraga 2020 (Treatise 2026, Eq. 44); n = 3, p = 1, enhancement above 0.84 T_s, T_s = 1350 °C', A:2.12e12, n:3, p:1, E:610, V:6, r:0, alpha:0, Xon:true, Ts:1350, dQ:230, f:0.84},
     {id:'custom_power', name:'Custom power law', cite:'', src:'', A:1, n:3, p:0, E:400, V:10, r:0, alpha:0, Xon:false, Ts:1350, dQ:230, f:0.9},
   ],
   peierls: [
     {id:'mei10', name:'Low-T plasticity', cite:'Mei et al. 2010', src:'Mei et al. 2010, D-DIA', A:1.4e-7, n:2, sP:5900, E:320, V:0, pp:0.5, q:1},
-    {id:'goetze78', name:'Low-T plasticity', cite:'Goetze 1978', src:'Goetze 1978; Evans & Goetze 1979', A:Math.pow(10,3), n:0, sP:9100, E:500, V:0, pp:1, q:2},
+    {id:'goetze78', name:'Low-T plasticity', cite:'Goetze 1978', src:'Goetze 1978; Evans & Goetze 1979 (A = 5.7e11 s⁻¹, E = 540 kJ/mol, σ_P = 8.5 GPa, as in Warren & Hirth 2006)', A:5.7e11, n:0, sP:8500, E:540, V:0, pp:1, q:2},
     {id:'kum17', name:'Low-T plasticity', cite:'Kumamoto et al. 2017', src:'Kumamoto et al. 2017, nanoindentation', A:Math.pow(10,7.1), n:2, sP:2060, E:518, V:0, pp:0.75, q:1},
     {id:'custom_peierls', name:'Custom Peierls law', cite:'', src:'', A:1e-7, n:2, sP:5000, E:350, V:0, pp:0.5, q:1},
   ],
@@ -356,11 +359,12 @@ const SCENARIOS = {
   },
   hk03dry: {
     name:'Hirth & Kohlstedt 2003, dry',
-    note:'Diffusion creep, GSS dislocation creep (disGBS) and GSI dislocation creep from HK03, all in parallel, with Mei et al. 2010 low-T plasticity.',
+    note:'HK03 as combined by Warren & Hirth (2006): diffusion creep + GSI dislocation creep + low-T plasticity + disGBS, where disGBS = (1/GBS + 1/easy slip)⁻¹. Low-T plasticity from Mei et al. 2010.',
     mechs: ()=>[
       mech('power','hk03_dif_dry',{color:PAL.gbd}),
-      mech('power','hk03_gbs',{color:PAL.gss}),
       mech('power','hk03_dis_dry',{color:PAL.gsi}),
+      mech('power','hk03_gbs',{color:PAL.gss, group:'A'}),
+      mech('power','hk03_easy',{color:'#a9d3b4', group:'A'}),
       mech('peierls','mei10',{color:PAL.ltp}),
     ],
     axes:{x:'T', y:'s', xmin:600, xmax:1600, ymin:-1, ymax:4, T:1200, d:1000, s:100, P:0.3, COH:0, phi:0}
@@ -428,12 +432,12 @@ function readAxesUI(){
 }
 
 const FIELDS = {
-  power:[['A','A'],['n','n'],['p','p'],['E','E (kJ/mol)'],['V','V (cm³/mol)'],['r','r (C_OH)'],['alpha','α (melt)'],['Ts','T_s (°C)'],['dQ','ΔQ (kJ/mol)'],['f','f = T_c/T_s']],
+  power:[['A','A'],['n','n'],['p','p'],['E','E (kJ/mol)'],['V','V (cm³/mol)'],['r','r (C_OH)'],['alpha','α (melt)'],['Ts','T_s (°C)'],['dQ','ΔQ (kJ/mol)'],['f','f = T_c/T_s'],['Tsw','T_sw (°C)'],['A2','A above T_sw'],['E2','E above T_sw']],
   peierls:[['A','A'],['n','n'],['sP','σ_P (MPa)'],['E','E (kJ/mol)'],['V','V (cm³/mol)'],['pp','p'],['q','q']],
   breithaupt:[['log10A','log₁₀A′*'],['log10Rpipe','log₁₀R′pipe*'],['log10Rgb','log₁₀R′gb*'],['log10Rlat','log₁₀R′lat*'],['Q','Q (kJ/mol)'],['dV','ΔV (cm³/mol)'],['sigP','σ_P* (MPa)'],['sigRhoMax','σ_ρ,max (MPa)'],['mu','μ (GPa)'],['b','b (m)'],['beta','β']],
 };
 const EQS = {
-  power:'ε̇ = A σⁿ d⁻ᵖ C_OHʳ e^{αφ} exp[−(E+PV)/RT]',
+  power:'ε̇ = A σⁿ d⁻ᵖ C_OHʳ e^{αφ} exp[−(E+PV)/RT]; A and E switch to A₂ and E₂ above T_sw if set',
   peierls:'ε̇ = A σⁿ exp{−(E+PV)/RT [1−(σ/σ_P)ᵖ]^q}',
   breithaupt:'ε̇ = A′σ_ρ² sinh[(σ−σ_ρ−σ_d)/σ_ref], steady state of dσ_ρ/dt = M[...]',
 };
@@ -448,6 +452,7 @@ function renderMechs(){
     const presets = PRESETS[m.type].map(p=>`<option value="${p.id}" ${p.id===m.preset?'selected':''}>${p.name}${p.cite?' ('+p.cite+')':''}</option>`).join('');
     const params = FIELDS[m.type].map(([k,l])=>{
       if(m.type==='power' && ['Ts','dQ','f'].includes(k) && !m.Xon) return '';
+      if(m.type==='power' && ['Tsw','A2','E2'].includes(k) && m.Tsw==null) return '';
       return `<div class="field"><span>${l}</span><input type="text" data-k="${k}" value="${fmtNum(m[k])}"></div>`;
     }).join('');
     const xon = m.type==='power' ? `<label style="font-size:12px"><input type="checkbox" data-k="Xon" ${m.Xon?'checked':''}> near-solidus enhancement</label>` : '';
