@@ -291,26 +291,26 @@ function breithaupt(p, s, T, dum, P){
 /* ----------------------------------------------------------- library */
 const PRESETS = {
   power: [
-    {id:'hk03_dif_dry', name:'Diffusion creep, dry', src:'Hirth & Kohlstedt 2003', A:1.5e9, n:1, p:3, E:375, V:6, r:0, alpha:30, Xon:false, Ts:1350, dQ:230, f:0.92},
-    {id:'hzk11_dif_dry', name:'Diffusion creep, dry (HZK11)', src:'Hansen, Zimmerman & Kohlstedt 2011', A:Math.pow(10,7.6), n:1, p:3, E:375, V:6, r:0, alpha:30, Xon:false, Ts:1350, dQ:230, f:0.92},
-    {id:'hk03_dif_wet', name:'Diffusion creep, wet', src:'Hirth & Kohlstedt 2003 (C_OH in ppm H/Si)', A:1e6, n:1, p:3, E:335, V:4, r:1, alpha:30, Xon:false, Ts:1350, dQ:230, f:0.92},
-    {id:'hk03_dis_dry', name:'Dislocation creep, dry', src:'Hirth & Kohlstedt 2003', A:1.1e5, n:3.5, p:0, E:530, V:18, r:0, alpha:45, Xon:false, Ts:1350, dQ:230, f:0.92},
-    {id:'hk03_dis_wet', name:'Dislocation creep, wet', src:'Hirth & Kohlstedt 2003 (C_OH in ppm H/Si)', A:90, n:3.5, p:0, E:480, V:11, r:1.2, alpha:45, Xon:false, Ts:1350, dQ:230, f:0.92},
-    {id:'hzk11_gbs', name:'GSS dislocation creep (disGBS)', src:'Hansen, Zimmerman & Kohlstedt 2011', A:Math.pow(10,4.8), n:2.9, p:0.73, E:445, V:18, r:0, alpha:30, Xon:false, Ts:1350, dQ:230, f:0.92},
-    {id:'hk03_gbs', name:'disGBS (HK03 form)', src:'Hirth & Kohlstedt 2003', A:6500, n:3.5, p:2, E:400, V:18, r:0, alpha:30, Xon:false, Ts:1350, dQ:230, f:0.92},
-    {id:'hiraga_dif', name:'Grain-boundary diffusion controlled creep', src:'Yabe & Hiraga 2020 (Treatise 2026, Eq. 41); near-solidus enhancement above 0.92 T_s, T_s = 1350 °C', A:1.12e10, n:1, p:3, E:470, V:6, r:0, alpha:0, Xon:true, Ts:1350, dQ:230, f:0.92},
-    {id:'hiraga_int', name:'Interface-reaction controlled creep', src:'Yabe & Hiraga 2020 (Treatise 2026, Eq. 44); n = 3, p = 1, enhancement above 0.84 T_s, T_s = 1350 °C', A:2.12e12, n:3, p:1, E:610, V:6, r:0, alpha:0, Xon:true, Ts:1350, dQ:230, f:0.84},
-    {id:'custom_power', name:'Custom power law', src:'', A:1, n:3, p:0, E:400, V:10, r:0, alpha:0, Xon:false, Ts:1350, dQ:230, f:0.9},
+    {id:'hk03_dif_dry', name:'Diffusion creep', cite:'Hirth & Kohlstedt 2003, dry', src:'Hirth & Kohlstedt 2003', A:1.5e9, n:1, p:3, E:375, V:6, r:0, alpha:30, Xon:false, Ts:1350, dQ:230, f:0.92},
+    {id:'hzk11_dif_dry', name:'Diffusion creep', cite:'Hansen et al. 2011, dry', src:'Hansen, Zimmerman & Kohlstedt 2011', A:Math.pow(10,7.6), n:1, p:3, E:375, V:6, r:0, alpha:30, Xon:false, Ts:1350, dQ:230, f:0.92},
+    {id:'hk03_dif_wet', name:'Diffusion creep', cite:'Hirth & Kohlstedt 2003, wet', src:'Hirth & Kohlstedt 2003 (C_OH in ppm H/Si)', A:1e6, n:1, p:3, E:335, V:4, r:1, alpha:30, Xon:false, Ts:1350, dQ:230, f:0.92},
+    {id:'hk03_dis_dry', name:'GSI dislocation creep', cite:'Hirth & Kohlstedt 2003, dry', src:'Hirth & Kohlstedt 2003', A:1.1e5, n:3.5, p:0, E:530, V:18, r:0, alpha:45, Xon:false, Ts:1350, dQ:230, f:0.92},
+    {id:'hk03_dis_wet', name:'GSI dislocation creep', cite:'Hirth & Kohlstedt 2003, wet', src:'Hirth & Kohlstedt 2003 (C_OH in ppm H/Si)', A:90, n:3.5, p:0, E:480, V:11, r:1.2, alpha:45, Xon:false, Ts:1350, dQ:230, f:0.92},
+    {id:'hzk11_gbs', name:'GSS dislocation creep', cite:'Hansen et al. 2011', src:'Hansen, Zimmerman & Kohlstedt 2011', A:Math.pow(10,4.8), n:2.9, p:0.73, E:445, V:18, r:0, alpha:30, Xon:false, Ts:1350, dQ:230, f:0.92},
+    {id:'hk03_gbs', name:'GSS dislocation creep', cite:'Hirth & Kohlstedt 2003', src:'Hirth & Kohlstedt 2003', A:6500, n:3.5, p:2, E:400, V:18, r:0, alpha:30, Xon:false, Ts:1350, dQ:230, f:0.92},
+    {id:'hiraga_dif', name:'Grain-boundary diffusion controlled creep', cite:'Yabe & Hiraga 2020', src:'Yabe & Hiraga 2020 (Treatise 2026, Eq. 41); near-solidus enhancement above 0.92 T_s, T_s = 1350 °C', A:1.12e10, n:1, p:3, E:470, V:6, r:0, alpha:0, Xon:true, Ts:1350, dQ:230, f:0.92},
+    {id:'hiraga_int', name:'Interface-reaction controlled creep', cite:'Yabe & Hiraga 2020', src:'Yabe & Hiraga 2020 (Treatise 2026, Eq. 44); n = 3, p = 1, enhancement above 0.84 T_s, T_s = 1350 °C', A:2.12e12, n:3, p:1, E:610, V:6, r:0, alpha:0, Xon:true, Ts:1350, dQ:230, f:0.84},
+    {id:'custom_power', name:'Custom power law', cite:'', src:'', A:1, n:3, p:0, E:400, V:10, r:0, alpha:0, Xon:false, Ts:1350, dQ:230, f:0.9},
   ],
   peierls: [
-    {id:'mei10', name:'Low-T plasticity (Mei et al.)', src:'Mei et al. 2010, D-DIA', A:1.4e-7, n:2, sP:5900, E:320, V:0, pp:0.5, q:1},
-    {id:'goetze78', name:'Low-T plasticity (Goetze)', src:'Goetze 1978; Evans & Goetze 1979', A:Math.pow(10,3), n:0, sP:9100, E:500, V:0, pp:2, q:1},
-    {id:'kh15', name:'Low-T plasticity (Kumamoto et al.)', src:'Kumamoto et al. 2017, nanoindentation', A:Math.pow(10,7.1), n:2, sP:2060, E:518, V:0, pp:0.75, q:1},
-    {id:'custom_peierls', name:'Custom Peierls law', src:'', A:1e-7, n:2, sP:5000, E:350, V:0, pp:0.5, q:1},
+    {id:'mei10', name:'Low-T plasticity', cite:'Mei et al. 2010', src:'Mei et al. 2010, D-DIA', A:1.4e-7, n:2, sP:5900, E:320, V:0, pp:0.5, q:1},
+    {id:'goetze78', name:'Low-T plasticity', cite:'Goetze 1978', src:'Goetze 1978; Evans & Goetze 1979', A:Math.pow(10,3), n:0, sP:9100, E:500, V:0, pp:1, q:2},
+    {id:'kum17', name:'Low-T plasticity', cite:'Kumamoto et al. 2017', src:'Kumamoto et al. 2017, nanoindentation', A:Math.pow(10,7.1), n:2, sP:2060, E:518, V:0, pp:0.75, q:1},
+    {id:'custom_peierls', name:'Custom Peierls law', cite:'', src:'', A:1e-7, n:2, sP:5000, E:350, V:0, pp:0.5, q:1},
   ],
   breithaupt: [
-    {id:'b23_full', name:'Breithaupt dislocation model', src:'Breithaupt, Katz, Hansen & Kumamoto 2023, Table S1 (full model)', mu:65, b:5e-10, beta:2, alpha:2.46, sigP:3100, sigRhoMax:1800, dV:15, log10A:6.94, log10Rpipe:-0.95, log10Rgb:3.53, log10Rlat:-Infinity, Q:450, dyn:true},
-    {id:'b23_pipe', name:'Breithaupt, pipe recovery only', src:'Breithaupt et al. 2023, Table S1 (Fig. 1A fit)', mu:65, b:5e-10, beta:2, alpha:2.46, sigP:3100, sigRhoMax:1800, dV:15, log10A:6.44, log10Rpipe:0.01, log10Rgb:-Infinity, log10Rlat:-Infinity, Q:453, dyn:true},
+    {id:'b23_full', name:'Dislocation creep', cite:'Breithaupt et al. 2023', src:'Breithaupt, Katz, Hansen & Kumamoto 2023, Table S1 (full model)', mu:65, b:5e-10, beta:2, alpha:2.46, sigP:3100, sigRhoMax:1800, dV:15, log10A:6.94, log10Rpipe:-0.95, log10Rgb:3.53, log10Rlat:-Infinity, Q:450, dyn:true},
+    {id:'b23_pipe', name:'Dislocation creep', cite:'Breithaupt et al. 2023, pipe recovery only', src:'Breithaupt et al. 2023, Table S1 (Fig. 1A fit)', mu:65, b:5e-10, beta:2, alpha:2.46, sigP:3100, sigRhoMax:1800, dV:15, log10A:6.44, log10Rpipe:0.01, log10Rgb:-Infinity, log10Rlat:-Infinity, Q:453, dyn:true},
   ]
 };
 const SUBNAMES = ['', 'Low-T plasticity', 'GSI dislocation creep', 'GSS dislocation creep'];
@@ -345,7 +345,7 @@ const SCENARIOS = {
   },
   kh2015: {
     name:'Kohlstedt & Hansen 2015 (empirical, dry)',
-    note:'The 2015 Treatise maps: HK03 diffusion and dislocation creep, Hansen et al. 2011 disGBS, Mei et al. 2010 low-T plasticity.',
+    note:'The 2015 Treatise maps: Hansen et al. 2011 diffusion creep and GSS dislocation creep (disGBS), HK03 GSI dislocation creep, Mei et al. 2010 low-T plasticity.',
     mechs: ()=>[
       mech('power','hzk11_dif_dry',{color:PAL.gbd}),
       mech('power','hzk11_gbs',{color:PAL.gss}),
@@ -356,18 +356,18 @@ const SCENARIOS = {
   },
   hk03dry: {
     name:'Hirth & Kohlstedt 2003, dry',
-    note:'Diffusion creep, disGBS and dislocation creep from HK03 with GBS in series with dislocation creep, as in their Table 1.',
+    note:'Diffusion creep, GSS dislocation creep (disGBS) and GSI dislocation creep from HK03, all in parallel, with Mei et al. 2010 low-T plasticity.',
     mechs: ()=>[
       mech('power','hk03_dif_dry',{color:PAL.gbd}),
-      mech('power','hk03_gbs',{color:PAL.gss, group:'A'}),
-      mech('power','hk03_dis_dry',{color:PAL.gsi, group:'A'}),
+      mech('power','hk03_gbs',{color:PAL.gss}),
+      mech('power','hk03_dis_dry',{color:PAL.gsi}),
       mech('peierls','mei10',{color:PAL.ltp}),
     ],
     axes:{x:'T', y:'s', xmin:600, xmax:1600, ymin:-1, ymax:4, T:1200, d:1000, s:100, P:0.3, COH:0, phi:0}
   },
   hk03wet: {
     name:'Hirth & Kohlstedt 2003, wet (1000 ppm H/Si)',
-    note:'Wet diffusion and dislocation creep from HK03 with C_OH = 1000 ppm H/Si.',
+    note:'Wet diffusion creep and GSI dislocation creep from HK03 with C_OH = 1000 ppm H/Si, with Mei et al. 2010 low-T plasticity.',
     mechs: ()=>[
       mech('power','hk03_dif_wet',{color:PAL.gbd}),
       mech('power','hk03_dis_wet',{color:PAL.gsi}),
@@ -445,7 +445,7 @@ function renderMechs(){
   const host=$('mechs'); host.innerHTML='';
   S.mechs.forEach((m,i)=>{
     const div=document.createElement('div'); div.className='mech'+(m.on?'':' off')+(m.open?' open':''); div.style.borderLeftColor=m.color;
-    const presets = PRESETS[m.type].map(p=>`<option value="${p.id}" ${p.id===m.preset?'selected':''}>${p.name}</option>`).join('');
+    const presets = PRESETS[m.type].map(p=>`<option value="${p.id}" ${p.id===m.preset?'selected':''}>${p.name}${p.cite?' ('+p.cite+')':''}</option>`).join('');
     const params = FIELDS[m.type].map(([k,l])=>{
       if(m.type==='power' && ['Ts','dQ','f'].includes(k) && !m.Xon) return '';
       return `<div class="field"><span>${l}</span><input type="text" data-k="${k}" value="${fmtNum(m[k])}"></div>`;
@@ -868,7 +868,7 @@ $('pngClose').addEventListener('click', ()=>$('dlgPng').close());
 $('btnJson').addEventListener('click', ()=>{ $('jsonText').value=JSON.stringify({units:'degC', axes:S.axes, mechs:S.mechs, cq:S.cq, cstep:S.cstep, cmin:S.cmin, cmax:S.cmax, clab:S.clab, clabEvery:S.clabEvery, showBounds:S.showBounds, showNames:S.showNames, showSub:S.showSub, showPiezo:S.showPiezo, showTs:S.showTs}, (k,v)=> v===-Infinity?'-Inf':v, 2); $('jsonStatus').textContent=''; $('dlgJson').showModal(); });
 $('jsonClose').addEventListener('click', ()=>$('dlgJson').close());
 $('jsonCopy').addEventListener('click', async()=>{ try{ await navigator.clipboard.writeText($('jsonText').value); $('jsonStatus').textContent='Copied.'; }catch(e){ $('jsonText').select(); $('jsonStatus').textContent='Copy blocked here; select the text and copy it.'; } });
-$('jsonLoad').addEventListener('click', ()=>{ try{ const o=JSON.parse($('jsonText').value, (k,v)=> v==='-Inf'?-Infinity:v); if(!o.axes||!Array.isArray(o.mechs)) throw new Error('missing axes or mechs'); if(o.units!=='degC'){ o.axes.T-=273.15; if(o.axes.x==='T'){o.axes.xmin-=273.15;o.axes.xmax-=273.15;} if(o.axes.y==='T'){o.axes.ymin-=273.15;o.axes.ymax-=273.15;} for(const m of o.mechs) if('Ts' in m) m.Ts-=273.15; }
+$('jsonLoad').addEventListener('click', ()=>{ try{ const o=JSON.parse($('jsonText').value, (k,v)=> v==='-Inf'?-Infinity:v); if(!o.axes||!Array.isArray(o.mechs)) throw new Error('missing axes or mechs'); for(const m of o.mechs){ if(m.preset==='kh15') m.preset='kum17'; if(m.preset==='goetze78' && m.pp===2 && m.q===1){ m.pp=1; m.q=2; } } if(o.units!=='degC'){ o.axes.T-=273.15; if(o.axes.x==='T'){o.axes.xmin-=273.15;o.axes.xmax-=273.15;} if(o.axes.y==='T'){o.axes.ymin-=273.15;o.axes.ymax-=273.15;} for(const m of o.mechs) if('Ts' in m) m.Ts-=273.15; }
     S.axes=o.axes; S.mechs=o.mechs; for(const k of ['cq','cstep','cmin','cmax','clab','clabEvery','showBounds','showNames','showSub','showPiezo','showTs']) if(k in o) S[k]=o[k]; syncAxesUI(); renderMechs(); schedule(); $('jsonStatus').textContent='Loaded.'; $('dlgJson').close(); }catch(e){ $('jsonStatus').textContent='Could not read that: '+e.message; } });
 $('btnAbout').addEventListener('click', ()=>$('dlgAbout').showModal());
 $('aboutClose').addEventListener('click', ()=>$('dlgAbout').close());
